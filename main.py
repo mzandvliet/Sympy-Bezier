@@ -39,12 +39,32 @@ def simple_expr():
 
     show_expr_latex(expr3) # Show latex
 
+def cool_stuff():
+    x, t, z, nu = symbols('x t z nu')
+    result = integrate(exp(x) * sin(x) + exp(x)*cos(x), x)
+    pprint(result)
+
+    result = solve(x**2 - 2, x)
+    pprint(result)
+
+    y = Function('y')
+    result = dsolve(
+        Eq(
+            y(t).diff(t, t) - y(t), exp(t)),
+            y(t)
+        )
+    pprint(result)
+
+    mat = Matrix([[1,2],[2,2]])
+    pprint(mat.eigenvals())
 
 
 def main():
     # literal_sqrt()
     # symbolic_sqrt()
-    simple_expr()
+    # simple_expr()
+
+    cool_stuff()
     
 if __name__ == "__main__":
     main()
