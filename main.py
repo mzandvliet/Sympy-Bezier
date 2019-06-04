@@ -60,8 +60,9 @@ def cool_stuff():
 
 # straight port from Mathematica snippet by Pomax
 # https://stackoverflow.com/questions/35901079/calculating-the-inflection-point-of-a-cubic-bezier-curve
-def bezier_inflection():
-    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbols('t x1 x2 x3 x4 y1 y2 y3 y4')
+def bezier_curvature():
+    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4')
+    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
     a = 3 * (x2 - x1)
     b = 3 * (x3 - x2)
     c = 3 * (x4 - x3)
@@ -83,19 +84,24 @@ def bezier_inflection():
 
     result = expand(curvature)
 
-    pprint(result)
+    return (symbs, result)
+
+def simplify_curvature(symbols, expr):
+    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbols
+    expr_subbed = expr \
+        .subs(x1, 0) \
+        .subs(y1, 0) \
+        .subs(y4, 0)
+
+    return (symbols, expr_subbed)
 
 def main():
-    # literal_sqrt()
-    # symbolic_sqrt()
-    # simple_expr()
+    curvature_symbs, curvature_expr = bezier_curvature();
+    curvature_symbs, curvature_expr = simplify_curvature(curvature_symbs, curvature_expr)
 
-    # cool_stuff()
+    pprint(curvature_expr)
+    print("\nNumber of terms: " + str(len(curvature_expr.args)))
 
-    # f = lambda x : x**2
-    # print("4^2: " + str(f(4)))
-
-    bezier_inflection()
     
 if __name__ == "__main__":
     main()
