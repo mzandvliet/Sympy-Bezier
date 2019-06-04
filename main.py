@@ -86,21 +86,51 @@ def bezier_curvature():
 
     return (symbs, result)
 
-def simplify_curvature(symbols, expr):
-    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbols
+
+def simplify_curvature(symbs, expr):
+    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
     expr_subbed = expr \
         .subs(x1, 0) \
         .subs(y1, 0) \
         .subs(y4, 0)
 
-    return (symbols, expr_subbed)
+    return (symbs, expr_subbed)
+
+
+# Replace repeaded terms with variable names to emphasize their cachable nature
+#
+# todo: automatically determine repeated terms like these and
+# generate a, b, c... to cache them in
+def cache_variables(symbs, expr):
+    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
+
+    sub_symbs = symbols('a b c d')
+    a, b, c, d = sub_symbs
+
+    substitutions = {
+        a: x3 * y2,
+        b: x4 * y2,
+        c: x2 * y3,
+        d: x4 * y3
+    }
+
+    substitutions_inv = { v: k for k, v in substitutions.items() }
+
+    expr_subbed = expr.subs(substitutions_inv)
+
+    new_symbs = symbs + sub_symbs
+    return (new_symbs, expr_subbed, substitutions)
+
 
 def main():
-    curvature_symbs, curvature_expr = bezier_curvature();
-    curvature_symbs, curvature_expr = simplify_curvature(curvature_symbs, curvature_expr)
+    symbs, expr = bezier_curvature();
+    symbs, expr = simplify_curvature(symbs, expr)
 
-    pprint(curvature_expr)
-    print("\nNumber of terms: " + str(len(curvature_expr.args)))
+    pprint(expr)
+    print("\nNumber of terms: " + str(len(expr.args)))
+
+    symbs, expr, subs = cache_variables(symbs, expr)
+    pprint(expr)
 
     
 if __name__ == "__main__":
