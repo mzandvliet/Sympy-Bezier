@@ -4,12 +4,12 @@ import math
 
 # convert sympy expression to inline latex ready for showing in MatPlotLib
 def show_expr_latex(expr):
-    show_latex(latex(expr, mode='inline'))
+    show_latex_str(latex(expr, mode='inline'))
 
     # https://docs.sympy.org/latest/modules/printing.html#sympy.printing.latex.latex
 
-# Render some latex using MatPlotLib
-def show_latex(latex_str):
+# Render a latex string using MatPlotLib
+def show_latex_str(latex_str):
     plt.rc('text', usetex=True)
     plt.title(latex_str)
     plt.show()
@@ -17,6 +17,16 @@ def show_latex(latex_str):
     # https://matplotlib.org/users/usetex.html
     # Note: requires working install of LateX on PATH
 
+def to_latex_docstring(expr):
+    doc_srt = r"""
+\documentclass{article}
+\begin{document}
+    %s
+\end{document}""" % (
+        latex(expr, mode='inline')
+    )
+
+    return doc_srt
 
 def literal_sqrt():
     result = math.sqrt(9)
@@ -131,6 +141,9 @@ def main():
 
     symbs, expr, subs = cache_variables(symbs, expr)
     pprint(expr)
+
+    print(to_latex_docstring(expr))
+    # show_expr_latex(expr)
 
     
 if __name__ == "__main__":
