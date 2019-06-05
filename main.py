@@ -106,8 +106,8 @@ def simplify_curvature_2d(symbs, expr):
 
 # Replace repeaded terms with variable names to emphasize their cachable nature
 #
-# todo: automatically determine repeated terms like these and
-# generate a, b, c... to cache them in
+# todo: This is redundant, just use cse()
+# https://docs.sympy.org/latest/modules/rewriting.html
 def cache_variables(symbs, expr):
     t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
 
@@ -129,10 +129,8 @@ def cache_variables(symbs, expr):
     return (new_symbs, expr_subbed, substitutions)
 
 
-def substitute(expr, substitutions):
-    substitutions_inv = {v: k for k, v in substitutions.items()}
-    expr_subbed = expr.subs(substitutions_inv)
-    return expr_subbed
+def invert_dict(dict):
+    return {v: k for k, v in dict.items()}
 
 
 def main():
@@ -148,13 +146,11 @@ def main():
     # todo store factor, and remove it from expr temporarily
     # in a way that works with the polynomical coefficients below
 
-    pprint(expr)
-    print("----")
+    # pprint(expr)
+    # print("----")
 
     poly = Poly(expr, t)
     coeffs = poly.coeffs()
-    for c in enumerate(coeffs):
-        pprint(c)
 
     v1, v2, v3 = symbols('v1 v2 v3')
     substitutions = {
@@ -163,23 +159,18 @@ def main():
         v3: coeffs[2],
     }
     
-    expr_v = substitute(expr, substitutions)
+    expr_v = expr.subs(invert_dict(substitutions))
 
-    pprint(expr_v)
+    roots = solve(expr_v, t)
 
-    root = solve(expr_v, t)
-    pprint(root)
+    root_a = roots[0].subs(substitutions)
+    root_b = roots[1].subs(substitutions)
+    # pprint(root_a)
+    # pprint(root_b)
 
-    # inflection = solve(Eq(expr, 0), symbs[0])
-    # pprint(inflection)
-
-    # symbs, expr, substitutions = cache_variables(symbs, expr)
-    
-
-    # pprint(expr)
-    # print("\nNumber of terms: " + str(len(expr.args)))
-
-    # show_expr_latex(inflection)
+    common, expr = cse([root_a, root_b])
+    pprint(expr)
+    pprint(common)
     
 
     
