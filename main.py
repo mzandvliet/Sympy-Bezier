@@ -2,6 +2,7 @@ from sympy import *
 from sympy.vector import *
 import matplotlib.pyplot as plt
 import math
+from functools import reduce
 
 # convert sympy expression to inline latex ready for showing in MatPlotLib
 def show_expr_latex(expr):
@@ -129,9 +130,22 @@ def main():
 
     # geometry()
 
-    bases = bezier_bases(3)
-    for b in bases:
-        pprint(b)
+    # bases = bezier_bases(3)
+    # for b in bases:
+    #     pprint(b)
+
+    a, b, c = symbols('a b c')
+    points = (a, b, c)
+    bases = bezier_bases(2)
+    # bezier_terms = [(lambda p, b: p * b)(a, b) for p, b in zip(points, bases)]
+    bezier_terms = [p * b for p, b in zip(points, bases)]
+    
+    for t in bezier_terms:
+        pprint(t)
+
+    bezier = reduce((lambda x, y: x + y), bezier_terms)
+    pprint(bezier)
+    
 
     
 if __name__ == "__main__":
