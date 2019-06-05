@@ -1,4 +1,5 @@
 from sympy import *
+from sympy.vector import *
 import matplotlib.pyplot as plt
 import math
 
@@ -28,45 +29,21 @@ def to_latex_docstring(expr):
 
     return doc_srt
 
-def literal_sqrt():
-    result = math.sqrt(9)
-    print("Result: " + str(result))
 
-def symbolic_sqrt():
-    result = sqrt(8)
-    print("Result: " + str(result)) # auto-simplifies to 2*sqrt(2)
+def bezier_bases(n):
+    bases = []
+    for i in range(0, n+1):
+        bases.append(bernstein_basis(n, i))
 
-def simple_expr():
-    x, y = symbols('x y')
-    expr = x + 2*y
-    pprint(expr)
+    return bases
 
-    expr2 = expr + 1
-    pprint(expr2)
+def bernstein_basis(n, i):
+    symbs = symbols('t')
+    t = symbs
 
-    expr3 = x * expr  # doesn't expand this automatically
-    pprint(expr3) # unicode pretty print
+    basis = binomial(n, i) * t**i * (1 - t)**(n-i)
 
-    show_expr_latex(expr3) # Show latex
-
-def cool_stuff():
-    x, t, z, nu = symbols('x t z nu')
-    result = integrate(exp(x) * sin(x) + exp(x)*cos(x), x)
-    pprint(result)
-
-    result = solve(x**2 - 2, x)
-    pprint(result)
-
-    y = Function('y')
-    result = dsolve(
-        Eq(
-            y(t).diff(t, t) - y(t), exp(t)),
-            y(t)
-        )
-    pprint(result)
-
-    mat = Matrix([[1,2],[2,2]])
-    pprint(mat.eigenvals())
+    return basis
 
 # straight port from Mathematica snippet by Pomax
 # https://stackoverflow.com/questions/35901079/calculating-the-inflection-point-of-a-cubic-bezier-curve
@@ -132,18 +109,29 @@ def cache_variables(symbs, expr):
     return (new_symbs, expr_subbed, substitutions)
 
 
+def geometry():
+    N = CoordSys3D('N')
+    v = N.i * 3 + N.j * 2 + N.k * 1
+    print(v)
+
 def main():
-    symbs, expr = bezier_curvature();
-    symbs, expr = simplify_curvature(symbs, expr)
+    # symbs, expr = bezier_curvature();
+    # symbs, expr = simplify_curvature(symbs, expr)
 
-    pprint(expr)
-    print("\nNumber of terms: " + str(len(expr.args)))
+    # pprint(expr)
+    # print("\nNumber of terms: " + str(len(expr.args)))
 
-    symbs, expr, subs = cache_variables(symbs, expr)
-    pprint(expr)
+    # symbs, expr, subs = cache_variables(symbs, expr)
+    # pprint(expr)
 
-    print(to_latex_docstring(expr))
-    # show_expr_latex(expr)
+    # print(to_latex_docstring(expr))
+    # # show_expr_latex(expr)
+
+    # geometry()
+
+    bases = bezier_bases(3)
+    for b in bases:
+        pprint(b)
 
     
 if __name__ == "__main__":
