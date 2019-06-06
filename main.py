@@ -174,6 +174,7 @@ def simplify_curvature_3d(symbs, expr):
 # https://docs.sympy.org/latest/modules/rewriting.html
 #
 # or: at least generalize by matching scalar * scalar
+# https: // docs.sympy.org/latest/modules/utilities/iterables.html
 def cache_variables(symbs, expr):
     t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
 
@@ -225,16 +226,28 @@ def curvature_2d():
 
     expr_v = expr.subs(invert_dict(substitutions))
 
+    # solve v1*t^2 + v2*t + v3
     roots = solve(expr_v, t)
 
     root_a = roots[0].subs(substitutions)
     root_b = roots[1].subs(substitutions)
 
-    common, expr = cse([root_a, root_b])
+    common, expr = cse([root_a, root_b], numbered_symbols('a'))
+    print("---------------formula-----------------")
     pprint(expr)
-    pprint(common)
+    print("----------------terms-------------------")
+    for t in common:
+        pprint(t)
 
 def curvature_3d():
+    # Todo: formulate entirely using linear algebra
+    # will simplify the code, shrink it.
+    #
+    # Also, optimize terms to yield efficient operations
+    # on vector quantities, as that will work well with
+    # SIMD and whatnot
+
+
     symbs, expr = bezier_curvature_3d()
     symbs, expr = simplify_curvature_3d(symbs, expr)
     t = symbs[0]
@@ -262,15 +275,18 @@ def curvature_3d():
 
     expr_v = expr.subs(invert_dict(substitutions))
 
+    # solve v1*t^2 + v2*t + v3
     roots = solve(expr_v, t)
 
     root_a = roots[0].subs(substitutions)
     root_b = roots[1].subs(substitutions)
 
-    common, expr = cse([root_a, root_b])
+    common, expr = cse([root_a, root_b], numbered_symbols('a'))
+    print("---------------formula-----------------")
     pprint(expr)
-    print("----------------------------------------")
-    pprint(common)
+    print("----------------terms-------------------")
+    for t in common:
+        pprint(t)
 
 
 def main():
