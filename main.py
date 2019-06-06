@@ -125,11 +125,15 @@ def bezier_curvature_3d():
     by2 = make_bezier_expr(points_y_2nd, bases_2nd_deriv)
     bz2 = make_bezier_expr(points_z_2nd, bases_2nd_deriv)
 
+    N = CoordSys3D('N')
+
     # 3d cross product
     curvature = \
-        by1(t) * bz2(t) - bz1(t) * by2(t) + \
-        bz1(t) * bx2(t) - bx1(t) * bz2(t) + \
-        bx1(t) * by2(t) - by1(t) * bx2(t)
+        (by1(t) * bz2(t) - bz1(t) * by2(t)) * N.i + \
+        (bz1(t) * bx2(t) - bx1(t) * bz2(t)) * N.j + \
+        (bx1(t) * by2(t) - by1(t) * bx2(t)) * N.k
+
+    curvature = dot(curvature, curvature)
 
     result = expand(curvature)
     return (symbs, result)
@@ -264,29 +268,41 @@ def curvature_3d():
     # in a way that works with the polynomical coefficients below
 
     poly = Poly(expr, t)
-    coeffs = poly.coeffs()
+    # coeffs = poly.coeffs()
+    print("Got polynomial of degree: " + str(poly.degree()))
 
-    v1, v2, v3 = symbols('v1 v2 v3')
-    substitutions = {
-        v1: coeffs[0],
-        v2: coeffs[1],
-        v3: coeffs[2],
-    }
+    # v1, v2, v3 = symbols('v1 v2 v3')
+    # substitutions = {
+    #     v1: coeffs[0],
+    #     v2: coeffs[1],
+    #     v3: coeffs[2],
+    # }
 
-    expr_v = expr.subs(invert_dict(substitutions))
+    # expr_v = expr.subs(invert_dict(substitutions))
 
-    # solve v1*t^2 + v2*t + v3
-    roots = solve(expr_v, t)
+    # # solve v1*t^2 + v2*t + v3
+    # roots = solve(expr_v, t)
 
-    root_a = roots[0].subs(substitutions)
-    root_b = roots[1].subs(substitutions)
+    # root_a = roots[0].subs(substitutions)
+    # root_b = roots[1].subs(substitutions)
 
-    common, expr = cse([root_a, root_b], numbered_symbols('a'))
-    print("---------------formula-----------------")
-    pprint(expr)
-    print("----------------terms-------------------")
-    for t in common:
-        pprint(t)
+    # common, expr = cse([root_a, root_b], numbered_symbols('a'))
+    # print("---------------formula-----------------")
+    # pprint(expr)
+    
+    # for t in common:
+    #     pprint(t)
+
+    # print("----------------code-------------------")
+
+    # print("root_a = " + ccode(expr[0]) + ";")
+    # print("root_b = " + ccode(expr[1]) + ";")
+
+    # print("----------------parts-------------------")
+
+    # for t in common:
+    #     code = ccode(t)
+    #     print(len(code))
 
 
 def main():
