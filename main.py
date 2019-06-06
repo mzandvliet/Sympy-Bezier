@@ -50,6 +50,16 @@ def bernstein_basis(n, i, param):
 
     return basis
 
+
+def make_bezier_expr(points, bases):
+    if len(points) != len(bases):
+        raise Exception("Number of points %i should be equal to number of bases %i" % (
+            len(points), len(bases)))
+
+    terms = [p * b for p, b in zip(points, bases)]
+    expr = reduce((lambda x, y: x + y), terms)
+    return lambda t: expr
+
 def bezier_curvature_2d():
     symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4')
     t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
@@ -85,67 +95,79 @@ def bezier_curvature_2d():
     return (symbs, result)
 
 # Todo: really want to use linear algebra abstractions here
+# more importantly: use proper formulations of curvature, lol
+# https://en.wikipedia.org/wiki/Curvature (Space Curves)
+# alternative: https://en.wikipedia.org/wiki/Radius_of_curvature
+# radius of curvature and curvature both defined by arclenght, bah
+#
+# Also: SIGNED curvature. Otherwise we don't get the actual
+# sign flip that we're looking for XD
 def bezier_curvature_3d():
-    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
-    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
+    # symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
+    # t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
 
-    xd1 = 3 * (x2 - x1)
-    xd2 = 3 * (x3 - x2)
-    xd3 = 3 * (x4 - x3)
-    xdd1 = 2 * (xd2 - xd1)
-    xdd2 = 2 * (xd3 - xd2)
+    # ok first, we don't need these in the resulting formula,
+    # since we can definitely just cache the resulting vectors
+    # and plug them in directly
+    # we do need to ensure we get canceling of the 0 terms later
+    # xd1 = 3 * (x2 - x1)
+    # xd2 = 3 * (x3 - x2)
+    # xd3 = 3 * (x4 - x3)
+    # xdd1 = 2 * (xd2 - xd1)
+    # xdd2 = 2 * (xd3 - xd2)
 
-    yd1 = 3 * (y2 - y1)
-    yd2 = 3 * (y3 - y2)
-    yd3 = 3 * (y4 - y3)
-    ydd1 = 2 * (yd2 - yd1)
-    ydd2 = 2 * (yd3 - yd2)
+    # yd1 = 3 * (y2 - y1)
+    # yd2 = 3 * (y3 - y2)
+    # yd3 = 3 * (y4 - y3)
+    # ydd1 = 2 * (yd2 - yd1)
+    # ydd2 = 2 * (yd3 - yd2)
 
-    zd1 = 3 * (z2 - z1)
-    zd2 = 3 * (z3 - z2)
-    zd3 = 3 * (z4 - z3)
-    zdd1 = 2 * (zd2 - zd1)
-    zdd2 = 2 * (zd3 - zd2)
+    # zd1 = 3 * (z2 - z1)
+    # zd2 = 3 * (z3 - z2)
+    # zd3 = 3 * (z4 - z3)
+    # zdd1 = 2 * (zd2 - zd1)
+    # zdd2 = 2 * (zd3 - zd2)
 
-    bases_1st_deriv = bezier_bases(2, t)
-    bases_2nd_deriv = bezier_bases(1, t)
+    t = symbols('t')
+    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
+    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
+    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
+    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
 
-    points_x_1st = (xd1, xd2, xd3)
-    points_y_1st = (yd1, yd2, yd3)
-    points_z_1st = (zd1, zd2, zd3)
+    bases_d = bezier_bases(2, t)
+    bases_dd = bezier_bases(1, t)
 
-    points_x_2nd = (xdd1, xdd2)
-    points_y_2nd = (ydd1, ydd2)
-    points_z_2nd = (zdd1, zdd2)
+    points_x_d = (xd1, xd2, xd3)
+    points_y_d = (yd1, yd2, yd3)
+    points_z_d = (zd1, zd2, zd3)
 
-    bx1 = make_bezier_expr(points_x_1st, bases_1st_deriv)
-    by1 = make_bezier_expr(points_y_1st, bases_1st_deriv)
-    bz1 = make_bezier_expr(points_z_1st, bases_1st_deriv)
-    bx2 = make_bezier_expr(points_x_2nd, bases_2nd_deriv)
-    by2 = make_bezier_expr(points_y_2nd, bases_2nd_deriv)
-    bz2 = make_bezier_expr(points_z_2nd, bases_2nd_deriv)
+    points_x_dd = (xdd1, xdd2)
+    points_y_dd = (ydd1, ydd2)
+    points_z_dd = (zdd1, zdd2)
+
+    xd = make_bezier_expr(points_x_d, bases_d)
+    yd = make_bezier_expr(points_y_d, bases_d)
+    zd = make_bezier_expr(points_z_d, bases_d)
+    xdd = make_bezier_expr(points_x_dd, bases_dd)
+    ydd = make_bezier_expr(points_y_dd, bases_dd)
+    zdd = make_bezier_expr(points_z_dd, bases_dd)
 
     N = CoordSys3D('N')
 
-    # 3d cross product
-    curvature = \
-        (by1(t) * bz2(t) - bz1(t) * by2(t)) * N.i + \
-        (bz1(t) * bx2(t) - bx1(t) * bz2(t)) * N.j + \
-        (bx1(t) * by2(t) - by1(t) * bx2(t)) * N.k
+    # this gives us 3 polys, each with a quadratic root, for potentially 6 roots
 
-    curvature = dot(curvature, curvature)
+    # b1 = bx1(t) * N.i + by1(t) * N.j + bz1(t) * N.j
+    # b2 = bx2(t) * N.i + by2(t) * N.j + bz2(t) * N.j
+    # curvature = cross(b2, b1)
 
-    result = expand(curvature)
-    return (symbs, result)
-
-
-def make_bezier_expr(points, bases):
-    if len(points) != len(bases):
-        raise Exception("Number of points %i should be equal to number of bases %i"%(len(points), len(bases)))
-
-    terms = [p * b for p, b in zip(points, bases)]
-    expr = reduce((lambda x, y: x + y), terms)
-    return lambda t: expr
+    # bug: we're getting cubics! WHY!
+    result = [\
+        yd(t) * zdd(t) - zd(t) * ydd(t),\
+        zd(t) * xdd(t) - xd(t) * zdd(t),\
+        xd(t) * ydd(t) - yd(t) * xdd(t)
+    ]
+    
+    return (t, result)
 
 # Assume a given cubic curve starts at [0,0] and ends at [x,0]
 # leads to x1, y1, y2 = 0
@@ -243,6 +265,60 @@ def curvature_2d():
     for t in common:
         pprint(t)
 
+def solve_quadratic(expr, t):
+    expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
+
+    # expr = factor(expr) # factor out common 18
+    # todo store factor, and remove it from expr temporarily
+    # in a way that works with the polynomical coefficients below
+
+    poly = Poly(expr, t)
+    coeffs = poly.coeffs()
+    print("Got polynomial of degree: " + str(poly.degree()))
+
+    v1, v2, v3 = symbols('v1 v2 v3')
+    substitutions = {
+        v1: coeffs[0],
+        v2: coeffs[1],
+        v3: coeffs[2],
+    }
+
+    expr_simple = expr.subs(invert_dict(substitutions))
+
+    # solve v1*t^2 + v2*t + v3 = 0
+    eq = Eq(expr_simple, 0)
+    roots = solve(eq, t)
+
+    root_a = roots[0].subs(substitutions)
+    root_b = roots[1].subs(substitutions)
+
+    return (root_a, root_b)
+
+def print_solution(common, exprs):
+    # print("\n---------------formula-----------------\n")
+    
+    # for expr in exprs:
+    #     pprint(exprs)
+
+    # for t in common:
+    #     pprint(t)
+
+    print("\n----------------code-------------------\n")
+
+    for i, expr in enumerate(exprs):
+        print("float root_%d = "%i + ccode(expr) + ";")
+
+    print("\n----------------parts-------------------\n")
+
+    for t in common:
+        code = ccode(t)
+        code = code[1:-1]
+        comma_idx = code.find(",")
+        code = code[0:comma_idx] + " =" + code[comma_idx+1:]
+        code = "float " + code + ";"
+        print(code)
+
+
 def curvature_3d():
     # Todo: formulate entirely using linear algebra
     # will simplify the code, shrink it.
@@ -251,59 +327,21 @@ def curvature_3d():
     # on vector quantities, as that will work well with
     # SIMD and whatnot
 
+    t, exprs = bezier_curvature_3d()
+    # symbs, expr = simplify_curvature_3d(symbs, expr)
 
-    symbs, expr = bezier_curvature_3d()
-    symbs, expr = simplify_curvature_3d(symbs, expr)
-    t = symbs[0]
-    # terms, expr_optimal = cse(expr)
-    
+    # terms, expr_optimal = cse(expr, numbered_symbols('a'))
     # pprint(expr_optimal)
-    # print("----------------------------------------")
+    # print("\n----------------------------------------\n")
     # pprint(terms)
 
-    expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
+    a, b = solve_quadratic(exprs[0], t)
+    c, d = solve_quadratic(exprs[1], t)
+    e, f = solve_quadratic(exprs[2], t)
 
-    # expr = factor(expr) # factor out common 18
-    # todo store factor, and remove it from expr temporarily
-    # in a way that works with the polynomical coefficients below
+    common, exprs = cse([a, b, c, d, e, f], numbered_symbols('a'))
 
-    poly = Poly(expr, t)
-    # coeffs = poly.coeffs()
-    print("Got polynomial of degree: " + str(poly.degree()))
-
-    # v1, v2, v3 = symbols('v1 v2 v3')
-    # substitutions = {
-    #     v1: coeffs[0],
-    #     v2: coeffs[1],
-    #     v3: coeffs[2],
-    # }
-
-    # expr_v = expr.subs(invert_dict(substitutions))
-
-    # # solve v1*t^2 + v2*t + v3
-    # roots = solve(expr_v, t)
-
-    # root_a = roots[0].subs(substitutions)
-    # root_b = roots[1].subs(substitutions)
-
-    # common, expr = cse([root_a, root_b], numbered_symbols('a'))
-    # print("---------------formula-----------------")
-    # pprint(expr)
-    
-    # for t in common:
-    #     pprint(t)
-
-    # print("----------------code-------------------")
-
-    # print("root_a = " + ccode(expr[0]) + ";")
-    # print("root_b = " + ccode(expr[1]) + ";")
-
-    # print("----------------parts-------------------")
-
-    # for t in common:
-    #     code = ccode(t)
-    #     print(len(code))
-
+    print_solution(common, exprs)
 
 def main():
     curvature_3d()
