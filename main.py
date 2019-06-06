@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 import math
 from functools import reduce
 
+
+def invert_dict(dict):
+    return {v: k for k, v in dict.items()}
+
 # convert sympy expression to inline latex ready for showing in MatPlotLib
 def show_expr_latex(expr):
     show_latex_str(latex(expr, mode='inline'))
@@ -94,105 +98,28 @@ def bezier_curvature_2d():
     result = expand(curvature)
     return (symbs, result)
 
-# Todo: really want to use linear algebra abstractions here
-# more importantly: use proper formulations of curvature, lol
-# https://en.wikipedia.org/wiki/Curvature (Space Curves)
-# alternative: https://en.wikipedia.org/wiki/Radius_of_curvature
-# radius of curvature and curvature both defined by arclenght, bah
-#
-# Also: SIGNED curvature. Otherwise we don't get the actual
-# sign flip that we're looking for XD
-def bezier_curvature_3d():
-    # symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
-    # t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
-
-    # ok first, we don't need these in the resulting formula,
-    # since we can definitely just cache the resulting vectors
-    # and plug them in directly
-    # we do need to ensure we get canceling of the 0 terms later
-    # xd1 = 3 * (x2 - x1)
-    # xd2 = 3 * (x3 - x2)
-    # xd3 = 3 * (x4 - x3)
-    # xdd1 = 2 * (xd2 - xd1)
-    # xdd2 = 2 * (xd3 - xd2)
-
-    # yd1 = 3 * (y2 - y1)
-    # yd2 = 3 * (y3 - y2)
-    # yd3 = 3 * (y4 - y3)
-    # ydd1 = 2 * (yd2 - yd1)
-    # ydd2 = 2 * (yd3 - yd2)
-
-    # zd1 = 3 * (z2 - z1)
-    # zd2 = 3 * (z3 - z2)
-    # zd3 = 3 * (z4 - z3)
-    # zdd1 = 2 * (zd2 - zd1)
-    # zdd2 = 2 * (zd3 - zd2)
-
-    t = symbols('t')
-    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
-    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
-    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
-    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
-
-    bases_d = bezier_bases(2, t)
-    bases_dd = bezier_bases(1, t)
-
-    points_x_d = (xd1, xd2, xd3)
-    points_y_d = (yd1, yd2, yd3)
-    points_z_d = (zd1, zd2, zd3)
-
-    points_x_dd = (xdd1, xdd2)
-    points_y_dd = (ydd1, ydd2)
-    points_z_dd = (zdd1, zdd2)
-
-    xd = make_bezier_expr(points_x_d, bases_d)
-    yd = make_bezier_expr(points_y_d, bases_d)
-    zd = make_bezier_expr(points_z_d, bases_d)
-    xdd = make_bezier_expr(points_x_dd, bases_dd)
-    ydd = make_bezier_expr(points_y_dd, bases_dd)
-    zdd = make_bezier_expr(points_z_dd, bases_dd)
-
-    N = CoordSys3D('N')
-
-    # this gives us 3 polys, each with a quadratic root, for potentially 6 roots
-
-    # b1 = bx1(t) * N.i + by1(t) * N.j + bz1(t) * N.j
-    # b2 = bx2(t) * N.i + by2(t) * N.j + bz2(t) * N.j
-    # curvature = cross(b2, b1)
-
-    # bug: we're getting cubics! WHY!
-    result = [\
-        yd(t) * zdd(t) - zd(t) * ydd(t),\
-        zd(t) * xdd(t) - xd(t) * zdd(t),\
-        xd(t) * ydd(t) - yd(t) * xdd(t)
-    ]
-    
-    return (t, result)
-
 # Assume a given cubic curve starts at [0,0] and ends at [x,0]
 # leads to x1, y1, y2 = 0
-def simplify_curvature_2d(symbs, expr):
-    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
+def to_oriented_curve_2d(expr):
+    x1, y1, y4 = symbols('x1, y1, y4')
     expr_subbed = expr \
         .subs(x1, 0) \
         .subs(y1, 0) \
         .subs(y4, 0)
 
-    return (symbs, expr_subbed)
+    return (expr_subbed)
 
-# Assume a given cubic curve starts at [0,0,0] and ends at [x,0,0]
-# leads to x1, y1, y2 = 0
-def simplify_curvature_3d(symbs, expr):
-    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
+
+def to_oriented_curve_3d(expr):
+    x1, y1, z1, y4, z4 = symbols('x1, y1, z1, y4, z4')
     expr_subbed = expr \
         .subs(x1, 0) \
         .subs(y1, 0) \
         .subs(z1, 0) \
         .subs(y4, 0) \
-        .subs(z4, 0)
+        .subs(z4, 0) \
 
-    return (symbs, expr_subbed)
-
+    return (expr_subbed)
 
 # Replace repeaded terms with variable names to emphasize their cachable nature
 #
@@ -221,52 +148,11 @@ def cache_variables(symbs, expr):
     new_symbs = symbs + sub_symbs
     return (new_symbs, expr_subbed, substitutions)
 
-
-def invert_dict(dict):
-    return {v: k for k, v in dict.items()}
-
-def curvature_2d():
-    symbs, expr = bezier_curvature_2d()
-
-    t = symbs[0]
-
-    symbs, expr = simplify_curvature_2d(symbs, expr)
-    symbs, expr, subst = cache_variables(symbs, expr) # substitute with a,b,c,d
-    # pprint(expr)
-
-    expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
-
-    # expr = factor(expr) # factor out common 18
-    # todo store factor, and remove it from expr temporarily
-    # in a way that works with the polynomical coefficients below
-
-    poly = Poly(expr, t)
-    coeffs = poly.coeffs()
-
-    v1, v2, v3 = symbols('v1 v2 v3')
-    substitutions = {
-        v1: coeffs[0],
-        v2: coeffs[1],
-        v3: coeffs[2],
-    }
-
-    expr_v = expr.subs(invert_dict(substitutions))
-
-    # solve v1*t^2 + v2*t + v3
-    roots = solve(expr_v, t)
-
-    root_a = roots[0].subs(substitutions)
-    root_b = roots[1].subs(substitutions)
-
-    common, expr = cse([root_a, root_b], numbered_symbols('a'))
-    print("---------------formula-----------------")
-    pprint(expr)
-    print("----------------terms-------------------")
-    for t in common:
-        pprint(t)
-
 def solve_quadratic(expr, t):
+    expr = simplify(expr)
     expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
+
+    pprint(expr)
 
     # expr = factor(expr) # factor out common 18
     # todo store factor, and remove it from expr temporarily
@@ -318,6 +204,99 @@ def print_solution(common, exprs):
         code = "float " + code + ";"
         print(code)
 
+# Todo: really want to use linear algebra abstractions here
+# more importantly: use proper formulations of curvature, lol
+# https://en.wikipedia.org/wiki/Curvature (Space Curves)
+# alternative: https://en.wikipedia.org/wiki/Radius_of_curvature
+# radius of curvature and curvature both defined by arclenght, bah
+#
+# Also: SIGNED curvature. Otherwise we don't get the actual
+# sign flip that we're looking for XD
+
+
+def bezier_curvature_3d():
+    t = symbols('t')
+
+    # Using the below, I get quadratics
+
+    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
+    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
+
+    xd1 = 3 * (x2 - x1)
+    xd2 = 3 * (x3 - x2)
+    xd3 = 3 * (x4 - x3)
+    xdd1 = 2 * (xd2 - xd1)
+    xdd2 = 2 * (xd3 - xd2)
+
+    yd1 = 3 * (y2 - y1)
+    yd2 = 3 * (y3 - y2)
+    yd3 = 3 * (y4 - y3)
+    ydd1 = 2 * (yd2 - yd1)
+    ydd2 = 2 * (yd3 - yd2)
+
+    zd1 = 3 * (z2 - z1)
+    zd2 = 3 * (z3 - z2)
+    zd3 = 3 * (z4 - z3)
+    zdd1 = 2 * (zd2 - zd1)
+    zdd2 = 2 * (zd3 - zd2)
+
+
+    # using these though, I get cubics. Why? Something in the above that cancels automatically?
+
+    # symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
+    # symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
+    # xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
+    # xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
+
+    # from the 2d case:
+    # bases_1st_deriv = bezier_bases(2, t)
+    # bases_2nd_deriv = bezier_bases(1, t)
+
+    # points_x_1st = (a, b, c)
+    # points_x_2nd = (u, v)
+    # points_y_1st = (d, e, f)
+    # points_y_2nd = (w, z)
+
+    # bx1 = make_bezier_expr(points_x_1st, bases_1st_deriv)
+    # bx2 = make_bezier_expr(points_x_2nd, bases_2nd_deriv)
+    # by1 = make_bezier_expr(points_y_1st, bases_1st_deriv)
+    # by2 = make_bezier_expr(points_y_2nd, bases_2nd_deriv)
+
+    # curvature = bx1(t) * by2(t) - by1(t) * bx2(t)
+
+    bases_d = bezier_bases(2, t)
+    bases_dd = bezier_bases(1, t)
+
+    points_x_d = (xd1, xd2, xd3)
+    points_y_d = (yd1, yd2, yd3)
+    points_z_d = (zd1, zd2, zd3)
+
+    points_x_dd = (xdd1, xdd2)
+    points_y_dd = (ydd1, ydd2)
+    points_z_dd = (zdd1, zdd2)
+
+    xd = make_bezier_expr(points_x_d, bases_d)
+    yd = make_bezier_expr(points_y_d, bases_d)
+    zd = make_bezier_expr(points_z_d, bases_d)
+    xdd = make_bezier_expr(points_x_dd, bases_dd)
+    ydd = make_bezier_expr(points_y_dd, bases_dd)
+    zdd = make_bezier_expr(points_z_dd, bases_dd)
+
+    # this gives us 3 polys, for potentially 6 roots
+
+    # N = CoordSys3D('N')
+    # b1 = bx1(t) * N.i + by1(t) * N.j + bz1(t) * N.j
+    # b2 = bx2(t) * N.i + by2(t) * N.j + bz2(t) * N.j
+    # curvature = cross(b2, b1)
+
+    # store resulting coefficients for each spatial basis separately
+    result = [
+        yd(t) * zdd(t) - zd(t) * ydd(t),
+        zd(t) * xdd(t) - xd(t) * zdd(t),
+        xd(t) * ydd(t) - yd(t) * xdd(t)
+    ]
+
+    return (t, result)
 
 def curvature_3d():
     # Todo: formulate entirely using linear algebra
@@ -328,19 +307,34 @@ def curvature_3d():
     # SIMD and whatnot
 
     t, exprs = bezier_curvature_3d()
-    # symbs, expr = simplify_curvature_3d(symbs, expr)
 
-    # terms, expr_optimal = cse(expr, numbered_symbols('a'))
-    # pprint(expr_optimal)
-    # print("\n----------------------------------------\n")
-    # pprint(terms)
+    for i in range(0, len(exprs)):
+        exprs[i] = to_oriented_curve_3d(exprs[i])
 
     a, b = solve_quadratic(exprs[0], t)
     c, d = solve_quadratic(exprs[1], t)
     e, f = solve_quadratic(exprs[2], t)
 
     common, exprs = cse([a, b, c, d, e, f], numbered_symbols('a'))
+    print_solution(common, exprs)
 
+def curvature_2d():
+    symbs, expr = bezier_curvature_2d()
+
+    t = symbs[0]
+
+    symbs, expr = to_oriented_curve_2d(expr)
+    symbs, expr, subst = cache_variables(symbs, expr)  # substitute with a,b,c,d
+    # pprint(expr)
+
+    expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
+
+    # expr = factor(expr) # factor out common 18
+    # todo store factor, and remove it from expr temporarily
+    # in a way that works with the polynomical coefficients below
+
+    a, b = solve_quadratic(expr, t)
+    common, exprs = cse([a, b], numbered_symbols('a'))
     print_solution(common, exprs)
 
 def main():
