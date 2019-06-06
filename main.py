@@ -84,6 +84,56 @@ def bezier_curvature_2d():
     result = expand(curvature)
     return (symbs, result)
 
+# Todo: really want to use linear algebra abstractions here
+def bezier_curvature_3d():
+    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
+    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
+
+    xd1 = 3 * (x2 - x1)
+    xd2 = 3 * (x3 - x2)
+    xd3 = 3 * (x4 - x3)
+    xdd1 = 2 * (xd2 - xd1)
+    xdd2 = 2 * (xd3 - xd2)
+
+    yd1 = 3 * (y2 - y1)
+    yd2 = 3 * (y3 - y2)
+    yd3 = 3 * (y4 - y3)
+    ydd1 = 2 * (yd2 - yd1)
+    ydd2 = 2 * (yd3 - yd2)
+
+    zd1 = 3 * (z2 - z1)
+    zd2 = 3 * (z3 - z2)
+    zd3 = 3 * (z4 - z3)
+    zdd1 = 2 * (zd2 - zd1)
+    zdd2 = 2 * (zd3 - zd2)
+
+    bases_1st_deriv = bezier_bases(2, t)
+    bases_2nd_deriv = bezier_bases(1, t)
+
+    points_x_1st = (xd1, xd2, xd3)
+    points_y_1st = (yd1, yd2, yd3)
+    points_z_1st = (zd1, zd2, zd3)
+
+    points_x_2nd = (xdd1, xdd2)
+    points_y_2nd = (ydd1, ydd2)
+    points_z_2nd = (zdd1, zdd2)
+
+    bx1 = make_bezier_expr(points_x_1st, bases_1st_deriv)
+    by1 = make_bezier_expr(points_y_1st, bases_1st_deriv)
+    bz1 = make_bezier_expr(points_z_1st, bases_1st_deriv)
+    bx2 = make_bezier_expr(points_x_2nd, bases_2nd_deriv)
+    by2 = make_bezier_expr(points_y_2nd, bases_2nd_deriv)
+    bz2 = make_bezier_expr(points_z_2nd, bases_2nd_deriv)
+
+    # 3d cross product
+    curvature = \
+        by1(t) * bz2(t) - bz1(t) * by2(t) + \
+        bz1(t) * bx2(t) - bx1(t) * bz2(t) + \
+        bx1(t) * by2(t) - by1(t) * bx2(t)
+
+    result = expand(curvature)
+    return (symbs, result)
+
 
 def make_bezier_expr(points, bases):
     if len(points) != len(bases):
@@ -94,6 +144,7 @@ def make_bezier_expr(points, bases):
     return lambda t: expr
 
 # Assume a given cubic curve starts at [0,0] and ends at [x,0]
+# leads to x1, y1, y2 = 0
 def simplify_curvature_2d(symbs, expr):
     t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
     expr_subbed = expr \
@@ -103,11 +154,26 @@ def simplify_curvature_2d(symbs, expr):
 
     return (symbs, expr_subbed)
 
+# Assume a given cubic curve starts at [0,0,0] and ends at [x,0,0]
+# leads to x1, y1, y2 = 0
+def simplify_curvature_3d(symbs, expr):
+    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
+    expr_subbed = expr \
+        .subs(x1, 0) \
+        .subs(y1, 0) \
+        .subs(z1, 0) \
+        .subs(y4, 0) \
+        .subs(z4, 0)
+
+    return (symbs, expr_subbed)
+
 
 # Replace repeaded terms with variable names to emphasize their cachable nature
 #
-# todo: This is redundant, just use cse()
+# todo: This is redundant, could probably use cse()
 # https://docs.sympy.org/latest/modules/rewriting.html
+#
+# or: at least generalize by matching scalar * scalar
 def cache_variables(symbs, expr):
     t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
 
@@ -132,22 +198,20 @@ def cache_variables(symbs, expr):
 def invert_dict(dict):
     return {v: k for k, v in dict.items()}
 
-
-def main():
+def curvature_2d():
     symbs, expr = bezier_curvature_2d()
 
     t = symbs[0]
 
     symbs, expr = simplify_curvature_2d(symbs, expr)
     symbs, expr, subst = cache_variables(symbs, expr) # substitute with a,b,c,d
+    # pprint(expr)
+
     expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
 
     # expr = factor(expr) # factor out common 18
     # todo store factor, and remove it from expr temporarily
     # in a way that works with the polynomical coefficients below
-
-    # pprint(expr)
-    # print("----")
 
     poly = Poly(expr, t)
     coeffs = poly.coeffs()
@@ -158,21 +222,60 @@ def main():
         v2: coeffs[1],
         v3: coeffs[2],
     }
-    
+
     expr_v = expr.subs(invert_dict(substitutions))
 
     roots = solve(expr_v, t)
 
     root_a = roots[0].subs(substitutions)
     root_b = roots[1].subs(substitutions)
-    # pprint(root_a)
-    # pprint(root_b)
 
     common, expr = cse([root_a, root_b])
     pprint(expr)
     pprint(common)
+
+def curvature_3d():
+    symbs, expr = bezier_curvature_3d()
+    symbs, expr = simplify_curvature_3d(symbs, expr)
+    t = symbs[0]
+    # terms, expr_optimal = cse(expr)
+    
+    # pprint(expr_optimal)
+    # print("----------------------------------------")
+    # pprint(terms)
+
+    expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
+
+    # expr = factor(expr) # factor out common 18
+    # todo store factor, and remove it from expr temporarily
+    # in a way that works with the polynomical coefficients below
+
+    poly = Poly(expr, t)
+    coeffs = poly.coeffs()
+
+    v1, v2, v3 = symbols('v1 v2 v3')
+    substitutions = {
+        v1: coeffs[0],
+        v2: coeffs[1],
+        v3: coeffs[2],
+    }
+
+    expr_v = expr.subs(invert_dict(substitutions))
+
+    roots = solve(expr_v, t)
+
+    root_a = roots[0].subs(substitutions)
+    root_b = roots[1].subs(substitutions)
+
+    common, expr = cse([root_a, root_b])
+    pprint(expr)
+    print("----------------------------------------")
+    pprint(common)
+
+
+def main():
+    curvature_3d()
     
 
-    
 if __name__ == "__main__":
     main()
