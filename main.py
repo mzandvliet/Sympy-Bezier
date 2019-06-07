@@ -63,39 +63,6 @@ def make_bezier_expr(points, bases):
     expr = reduce((lambda x, y: x + y), terms)
     return lambda t: expr
 
-def bezier_curvature_2d():
-    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4')
-    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
-
-    a = 3 * (x2 - x1)
-    b = 3 * (x3 - x2)
-    c = 3 * (x4 - x3)
-    u = 2 * (b - a)
-    v = 2 * (c - b)
-
-    d = 3 * (y2 - y1)
-    e = 3 * (y3 - y2)
-    f = 3 * (y4 - y3)
-    w = 2 * (e - d)
-    z = 2 * (f - e)
-    
-    bases_1st_deriv = bezier_bases(2, t)
-    bases_2nd_deriv = bezier_bases(1, t)
-
-    points_x_1st = (a, b, c)
-    points_x_2nd = (u, v)
-    points_y_1st = (d, e, f)
-    points_y_2nd = (w, z)
-
-    bx1 = make_bezier_expr(points_x_1st, bases_1st_deriv)
-    bx2 = make_bezier_expr(points_x_2nd, bases_2nd_deriv)
-    by1 = make_bezier_expr(points_y_1st, bases_1st_deriv)
-    by2 = make_bezier_expr(points_y_2nd, bases_2nd_deriv)
-
-    curvature = bx1(t) * by2(t) - by1(t) * bx2(t)
-    result = expand(curvature)
-    return (symbs, result)
-
 # Assume a given cubic curve starts at [0,0] and ends at [x,0]
 # leads to x1, y1, y2 = 0
 def to_oriented_curve_2d(expr):
@@ -146,14 +113,17 @@ def cache_variables(symbs, expr):
     new_symbs = symbs + sub_symbs
     return (new_symbs, expr_subbed, substitutions)
 
-def solve_quadratic(expr, t):
+def to_polynomial(expr, param):
     expr = simplify(expr)
-    expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
+    expr = collect(expr, param)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
+    poly = Poly(expr, param)
+    return poly
 
-    poly = Poly(expr, t)
-    coeffs = poly.coeffs()
+def solve_quadratic(expr, t):
+    poly = to_polynomial(expr, t)
     print("Got polynomial of degree: " + str(poly.degree()))
 
+    coeffs = poly.coeffs()
     v1, v2, v3 = symbols('v1 v2 v3')
     substitutions = {
         v1: coeffs[0],
@@ -211,6 +181,39 @@ def print_code(common, exprs):
 # Also: SIGNED curvature. Otherwise we don't get the actual
 # sign flip that we're looking for XD
 
+
+def bezier_curvature_2d():
+    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4')
+    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
+
+    a = 3 * (x2 - x1)
+    b = 3 * (x3 - x2)
+    c = 3 * (x4 - x3)
+    u = 2 * (b - a)
+    v = 2 * (c - b)
+
+    d = 3 * (y2 - y1)
+    e = 3 * (y3 - y2)
+    f = 3 * (y4 - y3)
+    w = 2 * (e - d)
+    z = 2 * (f - e)
+
+    bases_1st_deriv = bezier_bases(2, t)
+    bases_2nd_deriv = bezier_bases(1, t)
+
+    points_x_1st = (a, b, c)
+    points_x_2nd = (u, v)
+    points_y_1st = (d, e, f)
+    points_y_2nd = (w, z)
+
+    bx1 = make_bezier_expr(points_x_1st, bases_1st_deriv)
+    bx2 = make_bezier_expr(points_x_2nd, bases_2nd_deriv)
+    by1 = make_bezier_expr(points_y_1st, bases_1st_deriv)
+    by2 = make_bezier_expr(points_y_2nd, bases_2nd_deriv)
+
+    curvature = bx1(t) * by2(t) - by1(t) * bx2(t)
+    result = expand(curvature)
+    return (symbs, result)
 
 def bezier_curvature_partials_3d():
     t = symbols('t')
@@ -272,15 +275,14 @@ def bezier_curvature_partials_3d():
 
     # store resulting coefficients for each spatial basis separately
     result = [
-        yd(t) * zdd(t) - zd(t) * ydd(t),
-        zd(t) * xdd(t) - xd(t) * zdd(t),
-        xd(t) * ydd(t) - yd(t) * xdd(t)
+        ydd(t) * zd(t) - zdd(t) * yd(t),
+        zdd(t) * xd(t) - xdd(t) * zd(t),
+        xdd(t) * yd(t) - ydd(t) * xd(t)
     ]
 
     return (t, result)
 
-
-def bezier_dd_partials():
+def bezier_ddt_partials():
     t = symbols('t')
 
     symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
@@ -304,8 +306,7 @@ def bezier_dd_partials():
 
     return (t, result)
 
-
-def bezier_height_3d():
+def bezier_height_dt_3d():
     t = symbols('t')
 
     symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
@@ -365,40 +366,42 @@ def inflections_3d():
         exprs[i] = substitute_coeffs(exprs[i])
         exprs[i] = to_oriented_curve_3d(exprs[i])
         exprs[i] = simplify(exprs[i])
-
+    
     # todo: IF WE GET CUBICS HERE, our formulation of the
     # solution is wrong. Print error.
 
-    a, b = solve_quadratic(exprs[0], t)
-    c, d = solve_quadratic(exprs[1], t)
-    e, f = solve_quadratic(exprs[2], t)
+    # a, b = solve_quadratic(exprs[0], t)
+    # c, d = solve_quadratic(exprs[1], t)
+    # e, f = solve_quadratic(exprs[2], t)
+    # common, exprs = cse([a,b,c,d,e,f], numbered_symbols('a'))
 
-    common, exprs = cse([a,b,c,d,e,f], numbered_symbols('a'))
+    a = solveset(exprs[0], t)
+    b = solveset(exprs[1], t)
+    c = solveset(exprs[2], t)
+    common, exprs = cse([a,b,c], numbered_symbols('a'))
     
-    print_pretty(common, exprs)
+    # print_pretty(common, exprs)
     print_code(common, exprs)
 
-
 def curvature_maxima_3d():
-    t, exprs = bezier_dd_partials()
-    
+    t, exprs = bezier_curvature_partials_3d()
+
     for i in range(0, len(exprs)):
-        # exprs[i] = substitute_coeffs(exprs[i])
+        exprs[i] = diff(exprs[i], t)
+        exprs[i] = substitute_coeffs(exprs[i])
         # exprs[i] = to_oriented_curve_3d(exprs[i])
         exprs[i] = simplify(exprs[i])
-        pprint(exprs[i])
 
-    a = solve(exprs[0], t)
-    b = solve(exprs[1], t)
-    c = solve(exprs[2], t)
-
+    a = solveset(exprs[0], t)
+    b = solveset(exprs[1], t)
+    c = solveset(exprs[2], t)
     common, exprs = cse([a, b, c], numbered_symbols('a'))
 
-    print_pretty(common, exprs)
+    # print_pretty(common, exprs)
     print_code(common, exprs)
 
 def height_maxima_3d():
-    t, expr = bezier_height_3d()
+    t, expr = bezier_height_dt_3d()
     expr = substitute_coeffs(expr)
     expr = simplify(expr)
     a = solveset(expr, t)
@@ -426,10 +429,128 @@ def inflections_2d():
     common, exprs = cse([a, b], numbered_symbols('a'))
     print_code(common, exprs)
 
+
+def silhouette_cubic_2d():
+    t = symbols('t')
+
+    # The setup:
+
+    # a curve (const), we need to express a point at t, and its normal
+    # a view point (const)
+    # direction from view point to curve point
+    # dot product of normal and view direction
+    # find t where that dot product = 0
+
+    vx = 0
+    vy = 0
+
+    symbs = symbols('x1 x2 x3 x4 y1 y2 y3 y4')
+    x1, x2, x3, x4, y1, y2, y3, y4 = symbs
+
+    xd1 = 3 * (x2 - x1)
+    xd2 = 3 * (x3 - x2)
+    xd3 = 3 * (x4 - x3)
+   
+    yd1 = 3 * (y2 - y1)
+    yd2 = 3 * (y3 - y2)
+    yd3 = 3 * (y4 - y3)
+
+    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3')
+    xd1, xd2, xd3, yd1, yd2, yd3= symbs_d
+
+    bases = bezier_bases(3, t)
+    bases_d = bezier_bases(2, t)
+
+    points_x = (x1, x2, x3, x4)
+    points_y = (y1, y2, y3, y4)
+    points_x_d = (xd1, xd2, xd3)
+    points_y_d = (yd1, yd2, yd3)
+
+    x = make_bezier_expr(points_x, bases)(t)
+    y = make_bezier_expr(points_y, bases)(t)
+    xd = make_bezier_expr(points_x_d, bases_d)(t)
+    yd = make_bezier_expr(points_y_d, bases_d)(t)
+
+    normal_x = -yd
+    normal_y = xd
+
+    viewdir_x = x - vx
+    viewdir_y = y - vy
+
+    dot = viewdir_x * normal_x + viewdir_y * normal_y
+
+    solution = solveset(dot, t)
+
+    pprint(solution)
+
+def silhouette_quadratic_2d():
+    t = symbols('t')
+
+    # The setup:
+
+    # a curve (const), we need to express a point at t, and its normal
+    # a view point (const)
+    # direction from view point to curve point
+    # dot product of normal and view direction
+    # find t where that dot product = 0
+
+    # Note: should really, really be expressing this as linear algebra
+
+    vx = 0
+    vy = 0
+
+    symbs = symbols('x1 x2 x3 y1 y2 y3')
+    x1, x2, x3, y1, y2, y3 = symbs
+
+    xd1 = 3 * (x2 - x1)
+    xd2 = 3 * (x3 - x2)
+
+    yd1 = 3 * (y2 - y1)
+    yd2 = 3 * (y3 - y2)
+
+    symbs_d = symbols('xd1 xd2 yd1 yd2')
+    xd1, xd2, yd1, yd2 = symbs_d
+
+    bases = bezier_bases(2, t)
+    bases_d = bezier_bases(1, t)
+
+    points_x = (x1, x2, x3)
+    points_y = (y1, y2, y3)
+    points_x_d = (xd1, xd2)
+    points_y_d = (yd1, yd2)
+
+    x = make_bezier_expr(points_x, bases)(t)
+    y = make_bezier_expr(points_y, bases)(t)
+    xd = make_bezier_expr(points_x_d, bases_d)(t)
+    yd = make_bezier_expr(points_y_d, bases_d)(t)
+
+    normal_x = -yd
+    normal_y = xd
+
+    viewdir_x = x - vx
+    viewdir_y = y - vy
+
+    dot = viewdir_x * normal_x + viewdir_y * normal_y
+    dot = expand(dot)
+
+    dotdiff = diff(dot, t)
+    pprint(dotdiff)
+
+    poly = to_polynomial(dotdiff, t)
+    print("Got polynomial of degree: " + str(poly.degree()))
+
+    solution = solveset(dotdiff, t)
+    common, exprs = cse(solution, numbered_symbols('a'))
+    
+    print_code(common, exprs)
+
 def main():
     # inflections_3d()
     # curvature_maxima_3d()    
-    height_maxima_3d()
+    # height_maxima_3d()
+
+    # silhouette_cubic_2d()
+    silhouette_quadratic_2d()
 
 if __name__ == "__main__":
     main()
