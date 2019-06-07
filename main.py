@@ -151,12 +151,6 @@ def solve_quadratic(expr, t):
     expr = simplify(expr)
     expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
 
-    pprint(expr)
-
-    # expr = factor(expr) # factor out common 18
-    # todo store factor, and remove it from expr temporarily
-    # in a way that works with the polynomical coefficients below
-
     poly = Poly(expr, t)
     coeffs = poly.coeffs()
     print("Got polynomial of degree: " + str(poly.degree()))
@@ -199,6 +193,8 @@ def print_code(common, exprs):
         code = code[1:-1]
         comma_idx = code.find(",")
         code = code[0:comma_idx] + " =" + code[comma_idx+1:]
+        code = code.replace("pow", "math.pow")
+        code = code.replace("sqrt", "math.sqrt")
         code = "float " + code + ";"
         print(code)
 
@@ -217,7 +213,7 @@ def print_code(common, exprs):
 # sign flip that we're looking for XD
 
 
-def bezier_curvature_3d():
+def bezier_inflections_3d():
     t = symbols('t')
 
     # Using the below, I get quadratics
@@ -324,7 +320,7 @@ def curvature_3d():
     # on vector quantities, as that will work well with
     # SIMD and whatnot
 
-    t, exprs = bezier_curvature_3d()
+    t, exprs = bezier_inflections_3d()
 
     for i in range(0, len(exprs)):
         # recursively replace xddi -> xdi -> xi
