@@ -79,7 +79,6 @@ def bezier_curvature_2d():
     f = 3 * (y4 - y3)
     w = 2 * (e - d)
     z = 2 * (f - e)
-
     
     bases_1st_deriv = bezier_bases(2, t)
     bases_2nd_deriv = bezier_bases(1, t)
@@ -180,21 +179,20 @@ def solve_quadratic(expr, t):
 
     return (root_a, root_b)
 
-def print_solution(common, exprs):
-    # print("\n---------------formula-----------------\n")
-    
-    # for expr in exprs:
-    #     pprint(exprs)
 
-    # for t in common:
-    #     pprint(t)
+def print_pretty(common, exprs):
+    print("\n---------------terms-----------------\n")
 
-    print("\n----------------code-------------------\n")
+    for t in common:
+        pprint(t)
 
-    for i, expr in enumerate(exprs):
-        print("float root_%d = "%i + ccode(expr) + ";")
+    print("\n----------------roots-------------------\n")
 
-    print("\n----------------parts-------------------\n")
+    for expr in exprs:
+        pprint(expr)
+
+def print_code(common, exprs):
+    print("\n----------------terms-------------------\n")
 
     for t in common:
         code = ccode(t)
@@ -203,6 +201,11 @@ def print_solution(common, exprs):
         code = code[0:comma_idx] + " =" + code[comma_idx+1:]
         code = "float " + code + ";"
         print(code)
+
+    print("\n----------------roots-------------------\n")
+
+    for i, expr in enumerate(exprs):
+        print("float root_%d = " % i + ccode(expr) + ";")
 
 # Todo: really want to use linear algebra abstractions here
 # more importantly: use proper formulations of curvature, lol
@@ -219,50 +222,37 @@ def bezier_curvature_3d():
 
     # Using the below, I get quadratics
 
-    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
-    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
+    # symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
+    # t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
 
-    xd1 = 3 * (x2 - x1)
-    xd2 = 3 * (x3 - x2)
-    xd3 = 3 * (x4 - x3)
-    xdd1 = 2 * (xd2 - xd1)
-    xdd2 = 2 * (xd3 - xd2)
+    # xd1 = 3 * (x2 - x1)
+    # xd2 = 3 * (x3 - x2)
+    # xd3 = 3 * (x4 - x3)
+    # xdd1 = 2 * (xd2 - xd1)
+    # xdd2 = 2 * (xd3 - xd2)
 
-    yd1 = 3 * (y2 - y1)
-    yd2 = 3 * (y3 - y2)
-    yd3 = 3 * (y4 - y3)
-    ydd1 = 2 * (yd2 - yd1)
-    ydd2 = 2 * (yd3 - yd2)
+    # yd1 = 3 * (y2 - y1)
+    # yd2 = 3 * (y3 - y2)
+    # yd3 = 3 * (y4 - y3)
+    # ydd1 = 2 * (yd2 - yd1)
+    # ydd2 = 2 * (yd3 - yd2)
 
-    zd1 = 3 * (z2 - z1)
-    zd2 = 3 * (z3 - z2)
-    zd3 = 3 * (z4 - z3)
-    zdd1 = 2 * (zd2 - zd1)
-    zdd2 = 2 * (zd3 - zd2)
+    # zd1 = 3 * (z2 - z1)
+    # zd2 = 3 * (z3 - z2)
+    # zd3 = 3 * (z4 - z3)
+    # zdd1 = 2 * (zd2 - zd1)
+    # zdd2 = 2 * (zd3 - zd2)
 
 
     # using these though, I get cubics. Why? Something in the above that cancels automatically?
+    # I guess...
+    # Idea: after performing this expansion, sub the intermediate terms by x1..z4, and eliminate
+    # the zero terms. Will not change order of curve, but still simplify the resulting equation.
 
-    # symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
-    # symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
-    # xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
-    # xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
-
-    # from the 2d case:
-    # bases_1st_deriv = bezier_bases(2, t)
-    # bases_2nd_deriv = bezier_bases(1, t)
-
-    # points_x_1st = (a, b, c)
-    # points_x_2nd = (u, v)
-    # points_y_1st = (d, e, f)
-    # points_y_2nd = (w, z)
-
-    # bx1 = make_bezier_expr(points_x_1st, bases_1st_deriv)
-    # bx2 = make_bezier_expr(points_x_2nd, bases_2nd_deriv)
-    # by1 = make_bezier_expr(points_y_1st, bases_1st_deriv)
-    # by2 = make_bezier_expr(points_y_2nd, bases_2nd_deriv)
-
-    # curvature = bx1(t) * by2(t) - by1(t) * bx2(t)
+    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
+    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
+    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
+    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
 
     bases_d = bezier_bases(2, t)
     bases_dd = bezier_bases(1, t)
@@ -298,6 +288,34 @@ def bezier_curvature_3d():
 
     return (t, result)
 
+def substitute_coeffs(expr):
+    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
+    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
+    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
+    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
+    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
+    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
+
+    substitutions = {
+        xd1: 3 * (x2 - x1),
+        xd2: 3 * (x3 - x2),
+        xd3: 3 * (x4 - x3),
+        yd1: 3 * (y2 - y1),
+        yd2: 3 * (y3 - y2),
+        yd3: 3 * (y4 - y3),
+        zd1: 3 * (z2 - z1),
+        zd2: 3 * (z3 - z2),
+        zd3: 3 * (z4 - z3),
+        xdd1: 2 * (xd2 - xd1),
+        xdd2: 2 * (xd3 - xd2),
+        ydd1: 2 * (yd2 - yd1),
+        ydd2: 2 * (yd3 - yd2),
+        zdd1: 2 * (zd2 - zd1),
+        zdd2: 2 * (zd3 - zd2)
+    }
+
+    return expr.subs(substitutions)
+
 def curvature_3d():
     # Todo: formulate entirely using linear algebra
     # will simplify the code, shrink it.
@@ -309,14 +327,24 @@ def curvature_3d():
     t, exprs = bezier_curvature_3d()
 
     for i in range(0, len(exprs)):
+        # recursively replace xddi -> xdi -> xi
+        for l in range(0, 2):
+            exprs[i] = substitute_coeffs(exprs[i])
+
         exprs[i] = to_oriented_curve_3d(exprs[i])
+        exprs[i] = simplify(exprs[i])
+
+    # todo: IF WE GET CUBICS HERE, our formulation of the
+    # solution is wrong. Print error.
 
     a, b = solve_quadratic(exprs[0], t)
     c, d = solve_quadratic(exprs[1], t)
     e, f = solve_quadratic(exprs[2], t)
 
     common, exprs = cse([a, b, c, d, e, f], numbered_symbols('a'))
-    print_solution(common, exprs)
+    
+    print_pretty(common, exprs)
+    print_code(common, exprs)
 
 def curvature_2d():
     symbs, expr = bezier_curvature_2d()
@@ -335,7 +363,7 @@ def curvature_2d():
 
     a, b = solve_quadratic(expr, t)
     common, exprs = cse([a, b], numbered_symbols('a'))
-    print_solution(common, exprs)
+    print_code(common, exprs)
 
 def main():
     curvature_3d()
