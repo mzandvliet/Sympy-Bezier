@@ -42,18 +42,17 @@ def make_point(N, name):
     x, y, z = symbols(coords)
     return x*N.i + y*N.j + z*N.k
 
+def bernstein_basis(n, i, param):
+    basis = binomial(n, i) * param**i * (1 - param)**(n-i)
+
+    return basis
+
 def bezier_bases(n, param):
     bases = []
     for i in range(0, n+1):
         bases.append(bernstein_basis(n, i, param))
 
     return bases
-
-def bernstein_basis(n, i, param):
-    basis = binomial(n, i) * param**i * (1 - param)**(n-i)
-
-    return basis
-
 
 def make_bezier_expr(points, bases):
     if len(points) != len(bases):
@@ -213,7 +212,7 @@ def print_code(common, exprs):
 # sign flip that we're looking for XD
 
 
-def bezier_inflections_3d():
+def bezier_curvature_partials_3d():
     t = symbols('t')
 
     # Using the below, I get quadratics
@@ -239,11 +238,7 @@ def bezier_inflections_3d():
     # zdd1 = 2 * (zd2 - zd1)
     # zdd2 = 2 * (zd3 - zd2)
 
-
     # using these though, I get cubics. Why? Something in the above that cancels automatically?
-    # I guess...
-    # Idea: after performing this expansion, sub the intermediate terms by x1..z4, and eliminate
-    # the zero terms. Will not change order of curve, but still simplify the resulting equation.
 
     symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
     symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
@@ -284,6 +279,46 @@ def bezier_inflections_3d():
 
     return (t, result)
 
+
+def bezier_dd_partials():
+    t = symbols('t')
+
+    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
+    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
+
+    bases_dd = bezier_bases(1, t)
+
+    points_x_dd = (xdd1, xdd2)
+    points_y_dd = (ydd1, ydd2)
+    points_z_dd = (zdd1, zdd2)
+ 
+    xdd = make_bezier_expr(points_x_dd, bases_dd)
+    ydd = make_bezier_expr(points_y_dd, bases_dd)
+    zdd = make_bezier_expr(points_z_dd, bases_dd)
+
+    result = [
+        xdd(t),
+        ydd(t),
+        zdd(t)
+    ]
+
+    return (t, result)
+
+
+def bezier_height_3d():
+    t = symbols('t')
+
+    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
+    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
+
+    bases_d = bezier_bases(2, t)
+
+    points_y_d = (yd1, yd2, yd3)
+
+    yd = make_bezier_expr(points_y_d, bases_d)
+
+    return (t, yd(t))
+
 def substitute_coeffs(expr):
     symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
     symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
@@ -310,9 +345,13 @@ def substitute_coeffs(expr):
         zdd2: 2 * (zd3 - zd2)
     }
 
-    return expr.subs(substitutions)
+    # recursively replace xddi -> xdi -> xi
+    for l in range(0, 2):
+        expr = expr.subs(substitutions)
 
-def curvature_3d():
+    return expr
+
+def inflections_3d():
     # Todo: formulate entirely using linear algebra
     # will simplify the code, shrink it.
     #
@@ -320,13 +359,10 @@ def curvature_3d():
     # on vector quantities, as that will work well with
     # SIMD and whatnot
 
-    t, exprs = bezier_inflections_3d()
+    t, exprs = bezier_curvature_partials_3d()
 
     for i in range(0, len(exprs)):
-        # recursively replace xddi -> xdi -> xi
-        for l in range(0, 2):
-            exprs[i] = substitute_coeffs(exprs[i])
-
+        exprs[i] = substitute_coeffs(exprs[i])
         exprs[i] = to_oriented_curve_3d(exprs[i])
         exprs[i] = simplify(exprs[i])
 
@@ -337,12 +373,51 @@ def curvature_3d():
     c, d = solve_quadratic(exprs[1], t)
     e, f = solve_quadratic(exprs[2], t)
 
-    common, exprs = cse([a, b, c, d, e, f], numbered_symbols('a'))
+    common, exprs = cse([a,b,c,d,e,f], numbered_symbols('a'))
     
     print_pretty(common, exprs)
     print_code(common, exprs)
 
-def curvature_2d():
+
+def curvature_maxima_3d():
+    t, exprs = bezier_dd_partials()
+    
+    for i in range(0, len(exprs)):
+        # exprs[i] = substitute_coeffs(exprs[i])
+        # exprs[i] = to_oriented_curve_3d(exprs[i])
+        exprs[i] = simplify(exprs[i])
+        pprint(exprs[i])
+
+    a = solve(exprs[0], t)
+    b = solve(exprs[1], t)
+    c = solve(exprs[2], t)
+
+    common, exprs = cse([a, b, c], numbered_symbols('a'))
+
+    print_pretty(common, exprs)
+    print_code(common, exprs)
+
+def height_maxima_3d():
+    t, expr = bezier_height_3d()
+
+    # expr = substitute_coeffs(expr)
+    # # exprs[i] = to_oriented_curve_3d(exprs[i])
+    # expr = simplify(expr)
+
+    # pprint(expr)
+
+    a = solveset(expr, t)
+    a = substitute_coeffs(a)
+    # a = solve_quadratic(expr, t)
+
+    # pprint(a)
+
+    common, exprs = cse(a, numbered_symbols('a'))
+
+    print_pretty(common, exprs)
+    print_code(common, exprs)
+
+def inflections_2d():
     symbs, expr = bezier_curvature_2d()
 
     t = symbs[0]
@@ -362,8 +437,9 @@ def curvature_2d():
     print_code(common, exprs)
 
 def main():
-    curvature_3d()
-    
+    # inflections_3d()
+    # curvature_maxima_3d()    
+    height_maxima_3d()
 
 if __name__ == "__main__":
     main()
