@@ -399,19 +399,9 @@ def curvature_maxima_3d():
 
 def height_maxima_3d():
     t, expr = bezier_height_3d()
-
-    # expr = substitute_coeffs(expr)
-    # # exprs[i] = to_oriented_curve_3d(exprs[i])
-    # expr = simplify(expr)
-
-    # pprint(expr)
-
+    expr = substitute_coeffs(expr)
+    expr = simplify(expr)
     a = solveset(expr, t)
-    a = substitute_coeffs(a)
-    # a = solve_quadratic(expr, t)
-
-    # pprint(a)
-
     common, exprs = cse(a, numbered_symbols('a'))
 
     print_pretty(common, exprs)
