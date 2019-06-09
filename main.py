@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 import math
 from functools import reduce
 
+'''
+    Todo:
+    - Try a factoring approach to finding some solutions. Since Beziers are built up
+    out of Berstein bases, and a lot of arithmetic is adding and multiplying those,
+    I wouldn't be surprised if we can find at least some solutions through factoring,
+    which would be far nicer than plugging everything into the quadratic formula.
+'''
+
 
 def invert_dict(dict):
     return {v: k for k, v in dict.items()}
@@ -158,19 +166,22 @@ def print_code(common, exprs):
     print("\n----------------terms-------------------\n")
 
     for t in common:
-        code = ccode(t)
-        code = code[1:-1]
-        comma_idx = code.find(",")
-        code = code[0:comma_idx] + " =" + code[comma_idx+1:]
-        code = code.replace("pow", "math.pow")
-        code = code.replace("sqrt", "math.sqrt")
-        code = "float " + code + ";"
-        print(code)
+        print(csharp(t))
 
     print("\n----------------roots-------------------\n")
 
     for i, expr in enumerate(exprs):
         print("float root_%d = " % i + ccode(expr) + ";")
+
+def csharp(code):
+    code = ccode(code)
+    code = code[1:-1]
+    comma_idx = code.find(",")
+    code = code[0:comma_idx] + " =" + code[comma_idx+1:]
+    code = code.replace("pow", "math.pow")
+    code = code.replace("sqrt", "math.sqrt")
+    code = "float " + code + ";"
+    return code
 
 # Todo: really want to use linear algebra abstractions here
 # more importantly: use proper formulations of curvature, lol
@@ -479,9 +490,18 @@ def silhouette_cubic_2d():
 
     dot = viewdir_x * normal_x + viewdir_y * normal_y
 
-    solution = solveset(dot, t)
+    dot = expand(dot)
 
-    pprint(solution)
+    dotdiff = diff(dot, t)
+    pprint(dotdiff)
+
+    poly = to_polynomial(dotdiff, t)
+    print("Got polynomial of degree: " + str(poly.degree()))
+
+    solution = solveset(dotdiff, t)
+    common, exprs = cse(solution, numbered_symbols('a'))
+
+    print_code(common, exprs)
 
 def silhouette_quadratic_2d():
     t = symbols('t')
@@ -494,8 +514,15 @@ def silhouette_quadratic_2d():
     # dot product of normal and view direction
     # find t where that dot product = 0
 
-    # Note: should really, really be expressing this as linear algebra
+    # Notes:
+    # 
+    # should really, really be expressing this as linear algebra
+    # can apply the same translation trick as before:
+    # translate and rotate entire problem s.t. a bunch of curve terms
+    # are 0.
 
+
+    # view position. Assuming view is center, here
     vx = 0
     vy = 0
 
@@ -507,9 +534,6 @@ def silhouette_quadratic_2d():
 
     yd1 = 3 * (y2 - y1)
     yd2 = 3 * (y3 - y2)
-
-    symbs_d = symbols('xd1 xd2 yd1 yd2')
-    xd1, xd2, yd1, yd2 = symbs_d
 
     bases = bezier_bases(2, t)
     bases_d = bezier_bases(1, t)
@@ -530,19 +554,41 @@ def silhouette_quadratic_2d():
     viewdir_x = x - vx
     viewdir_y = y - vy
 
-    dot = viewdir_x * normal_x + viewdir_y * normal_y
-    dot = expand(dot)
+    solution = viewdir_x * normal_x + viewdir_y * normal_y
+    solution = expand(solution)
 
-    dotdiff = diff(dot, t)
-    pprint(dotdiff)
+    # solution = diff(solution, t)
+    # pprint(solution)
 
-    poly = to_polynomial(dotdiff, t)
+    poly = to_polynomial(solution, t)
     print("Got polynomial of degree: " + str(poly.degree()))
 
-    solution = solveset(dotdiff, t)
+    solution = solveset(solution, t)
     common, exprs = cse(solution, numbered_symbols('a'))
     
     print_code(common, exprs)
+
+def quadratic_2d_bezier():
+    symbs = symbols('t, p1, p2, p3')
+    t, p1, p2, p3 = symbs
+
+    pd1 = 2 * (p2 - p1)
+    pd2 = 2 * (p3 - p2)
+
+    bases = bezier_bases(2, t)
+    bases_d = bezier_bases(1, t)
+
+    p = make_bezier_expr((p1, p2, p3), bases)(t)
+    pd = make_bezier_expr((pd1, pd2), bases_d)(t)
+
+    common, exprs = cse(p, numbered_symbols('a'))
+    print("Point:")
+    print_code(common, exprs)
+
+    common, exprs = cse(pd, numbered_symbols('a'))
+    print("Tangent:")
+    print_code(common, exprs)
+
 
 def main():
     # inflections_3d()
@@ -551,6 +597,8 @@ def main():
 
     # silhouette_cubic_2d()
     silhouette_quadratic_2d()
+
+    # quadratic_2d_bezier()
 
 if __name__ == "__main__":
     main()
