@@ -444,14 +444,6 @@ def inflections_2d():
 def silhouette_cubic_2d():
     t = symbols('t')
 
-    # The setup:
-
-    # a curve (const), we need to express a point at t, and its normal
-    # a view point (const)
-    # direction from view point to curve point
-    # dot product of normal and view direction
-    # find t where that dot product = 0
-
     vx = 0
     vy = 0
 
@@ -465,9 +457,6 @@ def silhouette_cubic_2d():
     yd1 = 3 * (y2 - y1)
     yd2 = 3 * (y3 - y2)
     yd3 = 3 * (y4 - y3)
-
-    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3')
-    xd1, xd2, xd3, yd1, yd2, yd3= symbs_d
 
     bases = bezier_bases(3, t)
     bases_d = bezier_bases(2, t)
@@ -488,20 +477,19 @@ def silhouette_cubic_2d():
     viewdir_x = x - vx
     viewdir_y = y - vy
 
-    dot = viewdir_x * normal_x + viewdir_y * normal_y
+    solution = viewdir_x * normal_x + viewdir_y * normal_y
+    solution = expand(solution)
+    solution = to_oriented_curve_3d(solution)
 
-    dot = expand(dot)
-
-    dotdiff = diff(dot, t)
-    pprint(dotdiff)
-
-    poly = to_polynomial(dotdiff, t)
+    poly = to_polynomial(solution, t)
     print("Got polynomial of degree: " + str(poly.degree()))
 
-    solution = solveset(dotdiff, t)
-    common, exprs = cse(solution, numbered_symbols('a'))
+    pprint(solution)
 
-    print_code(common, exprs)
+    # solution = solveset(solution, t)
+    # common, exprs = cse(solution, numbered_symbols('a'))
+
+    # print_code(common, exprs)
 
 def silhouette_quadratic_2d():
     t = symbols('t')
@@ -557,9 +545,6 @@ def silhouette_quadratic_2d():
     solution = viewdir_x * normal_x + viewdir_y * normal_y
     solution = expand(solution)
 
-    # solution = diff(solution, t)
-    # pprint(solution)
-
     poly = to_polynomial(solution, t)
     print("Got polynomial of degree: " + str(poly.degree()))
 
@@ -595,8 +580,8 @@ def main():
     # curvature_maxima_3d()    
     # height_maxima_3d()
 
-    # silhouette_cubic_2d()
-    silhouette_quadratic_2d()
+    silhouette_cubic_2d()
+    # silhouette_quadratic_2d()
 
     # quadratic_2d_bezier()
 
