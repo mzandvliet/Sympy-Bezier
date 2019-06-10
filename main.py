@@ -1,5 +1,5 @@
 from sympy import *
-from sympy.vector import *
+from sympy.physics.vector import *
 import matplotlib.pyplot as plt
 import math
 from functools import reduce
@@ -41,14 +41,6 @@ def to_latex_docstring(expr):
     )
 
     return doc_srt
-
-# Make a 3d point, with uniquely named scalars name_x, name_y, name_z, from frame N
-def make_point(N, name):
-    coords = ('x', 'y', 'z')
-    coords = map(lambda c: name + "_" + c + " ", coords)
-    coords = reduce(lambda a, b: a + b, coords)
-    x, y, z = symbols(coords)
-    return x*N.i + y*N.j + z*N.k
 
 def bernstein_basis(n, i, param):
     basis = binomial(n, i) * param**i * (1 - param)**(n-i)
@@ -553,6 +545,65 @@ def silhouette_quadratic_2d():
     
     print_code(common, exprs)
 
+# make a point using a 3d coordinate system from the linear algebra module
+# def point(N, name):
+#     bases = ('x', 'y', 'z')
+#     bases = map(lambda c: name + "_" + c + " ", bases)
+#     bases = reduce(lambda a, b: a + b, bases)
+#     x, y, z = symbols(bases)
+#     return x*N.i + y*N.j + z*N.k
+
+def symbolic_vector_2d(name):
+    bases = ('x', 'y')
+    bases = map(lambda c: name + "_" + c + " ", bases)
+    bases = reduce(lambda a, b: a + b, bases)
+    x, y = symbols(bases)
+    return Matrix([x, y])
+
+def silhouette_quadratic_2d_linalg():
+    # The setup:
+
+    # a curve (const), we need to express a point at t, and its normal
+    # a view point (const)
+    # direction from view point to curve point
+    # dot product of normal and view direction
+    # find t where that dot product = 0
+
+    t = symbols('t')
+
+    # v = symbolic_vector_2d('v')
+    view_point = Matrix([0,0])
+
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+
+    pd1 = 3 * (p2 - p1)
+    pd2 = 3 * (p3 - p2)
+
+    bases = bezier_bases(2, t)
+    bases_d = bezier_bases(1, t)
+
+    points = (p1, p2, p3)
+    points_d = (pd1, pd2)
+
+    p = make_bezier_expr(points, bases)(t)
+    pd = make_bezier_expr(points_d, bases_d)(t)
+
+    normal = Matrix([-pd[1], pd[0]])
+    viewdir = p - view_point
+
+    solution = viewdir.dot(normal)
+    solution = expand(solution)
+
+    poly = to_polynomial(solution, t)
+    print("Got polynomial of degree: " + str(poly.degree()))
+
+    solution = solveset(solution, t)
+    common, exprs = cse(solution, numbered_symbols('a'))
+
+    print_code(common, exprs)
+
 def quadratic_2d_bezier():
     symbs = symbols('t, p1, p2, p3')
     t, p1, p2, p3 = symbs
@@ -580,8 +631,9 @@ def main():
     # curvature_maxima_3d()    
     # height_maxima_3d()
 
-    silhouette_cubic_2d()
+    # silhouette_cubic_2d()
     # silhouette_quadratic_2d()
+    silhouette_quadratic_2d_linalg()
 
     # quadratic_2d_bezier()
 
