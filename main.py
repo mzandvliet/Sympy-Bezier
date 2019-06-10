@@ -560,6 +560,14 @@ def symbolic_vector_2d(name):
     x, y = symbols(bases)
     return Matrix([x, y])
 
+
+def symbolic_vector_3d(name):
+    bases = ('x', 'y', 'z')
+    bases = map(lambda c: name + "_" + c + " ", bases)
+    bases = reduce(lambda a, b: a + b, bases)
+    x, y, z = symbols(bases)
+    return Matrix([x, y, z])
+
 def silhouette_quadratic_2d_linalg():
     # The setup:
 
@@ -572,7 +580,7 @@ def silhouette_quadratic_2d_linalg():
     t = symbols('t')
 
     # v = symbolic_vector_2d('v')
-    view_point = Matrix([0,0])
+    view_point = Matrix([0,0,0])
 
     p1 = symbolic_vector_2d('p1')
     p2 = symbolic_vector_2d('p2')
@@ -600,6 +608,69 @@ def silhouette_quadratic_2d_linalg():
     print("Got polynomial of degree: " + str(poly.degree()))
 
     solution = solveset(solution, t)
+    common, exprs = cse(solution, numbered_symbols('a'))
+    print_code(common, exprs)
+
+'''
+Find silhouette of a square, quadratic bezier patch;
+which is a net of 9 points.
+
+Important: We want to find a silhouette CURVE, not
+a poorly defined locus of silhouette points.
+
+Therefore, grad(dot(viewdir(p(u,v)), n(u,v))) will not do.
+
+We know that, supposing solution is a quadratic curve defined
+by some p1, p2, p3, that p1 and p3 lie on patch edges,
+parameterized by some scalar params edge1_v, edge2_v.
+
+It would therefore suffice to look exclusively along expected
+patch edge for each of those.
+'''
+def silhouette_quadratic_patch_3d_linalg():
+    v = symbols('v') # vertical patch coord [0, 1]
+
+    # v = symbolic_vector_3d('v')
+    view_point = Matrix([0, 0, 0])
+
+    # points defining edge curve
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    pd1 = 3 * (p2 - p1)
+    pd2 = 3 * (p3 - p2)
+
+    bases = bezier_bases(2, v)
+    bases_d = bezier_bases(1, v)
+
+    points = (p1, p2, p3)
+    points_d = (pd1, pd2)
+
+    pos = make_bezier_expr(points, bases)(v)
+    tng = make_bezier_expr(points_d, bases_d)(v)
+
+    '''
+    todo: get bi_tangent.
+
+    for any point along cuve defning the edge of a
+    patch, bi_tangent is exclusively defined by first
+    2 control points of the tangent curve, so linear,
+    not quadratic
+    '''
+    bi_tng = symbolic_vector_3d('bi_tng')
+
+    normal = tng.cross(bi_tng)
+    viewdir = pos - view_point
+
+    solution = viewdir.dot(normal)
+    solution = expand(solution)
+
+    # pprint(solution)
+
+    poly = to_polynomial(solution, v)
+    print("Got polynomial of degree: " + str(poly.degree()))
+
+    solution = solveset(solution, v)
     common, exprs = cse(solution, numbered_symbols('a'))
 
     print_code(common, exprs)
@@ -633,7 +704,8 @@ def main():
 
     # silhouette_cubic_2d()
     # silhouette_quadratic_2d()
-    silhouette_quadratic_2d_linalg()
+    # silhouette_quadratic_2d_linalg()
+    silhouette_quadratic_patch_3d_linalg()
 
     # quadratic_2d_bezier()
 
