@@ -615,10 +615,16 @@ def silhouette_quadratic_2d_linalg():
 Find silhouette of a square, quadratic bezier patch;
 which is a net of 9 points.
 
+--
+
 Important: We want to find a silhouette CURVE, not
 a poorly defined locus of silhouette points.
 
-Therefore, grad(dot(viewdir(p(u,v)), n(u,v))) will not do.
+Therefore, grad(dot(viewdir(p(u,v)), n(u,v))) will not do,
+as we would be left clueless as to which points to actually
+construct our silhouette curve from.
+
+--
 
 We know that, supposing solution is a quadratic curve defined
 by some p1, p2, p3, that p1 and p3 lie on patch edges,
@@ -626,6 +632,32 @@ parameterized by some scalar params edge1_v, edge2_v.
 
 It would therefore suffice to look exclusively along expected
 patch edge for each of those.
+
+Idea:
+
+class square_patch_quadratic_3d
+    9 control points
+    eval_point(u,v)
+    eval_tangent(u,v)
+    eval_normal(u,v)
+
+With u or v = 0, or 1, the equations would automatically
+simplify, because of the p*t and p*(1-t) terms
+
+Can then process the 4 edge curves using a subroutine:
+eval_normal(u,0)
+eval_normal(u,1)
+eval_normal(0,v)
+eval_normal(1,v)
+
+--
+
+Possible Optimizations
+- Align view_point or p1 to [0,0,0]
+- Align last curve point to [x,0,0]
+- Align a prominent tangent to [x,0,0]
+- Solve 2d sub problems, instead of general 3d ones
+etc.
 '''
 def silhouette_quadratic_patch_3d_linalg():
     v = symbols('v') # vertical patch coord [0, 1]
