@@ -175,6 +175,38 @@ def csharp(code):
     code = "float " + code + ";"
     return code
 
+def substitute_coeffs(expr):
+    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
+    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
+    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
+    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
+    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
+    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
+
+    substitutions = {
+        xd1: 3 * (x2 - x1),
+        xd2: 3 * (x3 - x2),
+        xd3: 3 * (x4 - x3),
+        yd1: 3 * (y2 - y1),
+        yd2: 3 * (y3 - y2),
+        yd3: 3 * (y4 - y3),
+        zd1: 3 * (z2 - z1),
+        zd2: 3 * (z3 - z2),
+        zd3: 3 * (z4 - z3),
+        xdd1: 2 * (xd2 - xd1),
+        xdd2: 2 * (xd3 - xd2),
+        ydd1: 2 * (yd2 - yd1),
+        ydd2: 2 * (yd3 - yd2),
+        zdd1: 2 * (zd2 - zd1),
+        zdd2: 2 * (zd3 - zd2)
+    }
+
+    # recursively replace xddi -> xdi -> xi
+    for l in range(0, 2):
+        expr = expr.subs(substitutions)
+
+    return expr
+
 # Todo: really want to use linear algebra abstractions here
 # more importantly: use proper formulations of curvature, lol
 # https://en.wikipedia.org/wiki/Curvature (Space Curves)
@@ -323,38 +355,6 @@ def bezier_height_dt_3d():
 
     return (t, yd(t))
 
-def substitute_coeffs(expr):
-    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
-    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
-    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
-    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
-    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
-    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
-
-    substitutions = {
-        xd1: 3 * (x2 - x1),
-        xd2: 3 * (x3 - x2),
-        xd3: 3 * (x4 - x3),
-        yd1: 3 * (y2 - y1),
-        yd2: 3 * (y3 - y2),
-        yd3: 3 * (y4 - y3),
-        zd1: 3 * (z2 - z1),
-        zd2: 3 * (z3 - z2),
-        zd3: 3 * (z4 - z3),
-        xdd1: 2 * (xd2 - xd1),
-        xdd2: 2 * (xd3 - xd2),
-        ydd1: 2 * (yd2 - yd1),
-        ydd2: 2 * (yd3 - yd2),
-        zdd1: 2 * (zd2 - zd1),
-        zdd2: 2 * (zd3 - zd2)
-    }
-
-    # recursively replace xddi -> xdi -> xi
-    for l in range(0, 2):
-        expr = expr.subs(substitutions)
-
-    return expr
-
 def inflections_3d():
     # Todo: formulate entirely using linear algebra
     # will simplify the code, shrink it.
@@ -483,68 +483,6 @@ def silhouette_cubic_2d():
 
     # print_code(common, exprs)
 
-def silhouette_quadratic_2d():
-    t = symbols('t')
-
-    # The setup:
-
-    # a curve (const), we need to express a point at t, and its normal
-    # a view point (const)
-    # direction from view point to curve point
-    # dot product of normal and view direction
-    # find t where that dot product = 0
-
-    # Notes:
-    # 
-    # should really, really be expressing this as linear algebra
-    # can apply the same translation trick as before:
-    # translate and rotate entire problem s.t. a bunch of curve terms
-    # are 0.
-
-
-    # view position. Assuming view is center, here
-    vx = 0
-    vy = 0
-
-    symbs = symbols('x1 x2 x3 y1 y2 y3')
-    x1, x2, x3, y1, y2, y3 = symbs
-
-    xd1 = 3 * (x2 - x1)
-    xd2 = 3 * (x3 - x2)
-
-    yd1 = 3 * (y2 - y1)
-    yd2 = 3 * (y3 - y2)
-
-    bases = bezier_bases(2, t)
-    bases_d = bezier_bases(1, t)
-
-    points_x = (x1, x2, x3)
-    points_y = (y1, y2, y3)
-    points_x_d = (xd1, xd2)
-    points_y_d = (yd1, yd2)
-
-    x = make_bezier_expr(points_x, bases)(t)
-    y = make_bezier_expr(points_y, bases)(t)
-    xd = make_bezier_expr(points_x_d, bases_d)(t)
-    yd = make_bezier_expr(points_y_d, bases_d)(t)
-
-    normal_x = -yd
-    normal_y = xd
-
-    viewdir_x = x - vx
-    viewdir_y = y - vy
-
-    solution = viewdir_x * normal_x + viewdir_y * normal_y
-    solution = expand(solution)
-
-    poly = to_polynomial(solution, t)
-    print("Got polynomial of degree: " + str(poly.degree()))
-
-    solution = solveset(solution, t)
-    common, exprs = cse(solution, numbered_symbols('a'))
-    
-    print_code(common, exprs)
-
 # make a point using a 3d coordinate system from the linear algebra module
 # def point(N, name):
 #     bases = ('x', 'y', 'z')
@@ -568,7 +506,7 @@ def symbolic_vector_3d(name):
     x, y, z = symbols(bases)
     return Matrix([x, y, z])
 
-def silhouette_quadratic_2d_linalg():
+def silhouette_quadratic_2d():
     # The setup:
 
     # a curve (const), we need to express a point at t, and its normal
@@ -659,53 +597,74 @@ Possible Optimizations
 - Solve 2d sub problems, instead of general 3d ones
 etc.
 '''
-def silhouette_quadratic_patch_3d_linalg():
-    v = symbols('v') # vertical patch coord [0, 1]
 
-    # v = symbolic_vector_3d('v')
+
+def quadratic_patch_pos_3d(patch, u, v):
+    bases_u = bezier_bases(2, u)
+    bases_v = bezier_bases(2, v)
+
+    pos = Matrix([0, 0, 0])
+
+    for i in range(0, 3):
+        for j in range(0, 3):
+            pos += patch[i][j] * bases_u[i] * bases_v[j]
+
+    return pos
+
+def quadratic_patch_normal_3d(patch_d, u, v):
+    bases_u = bezier_bases(1, u)
+    bases_v = bezier_bases(1, v)
+
+    normal = Matrix([0, 0, 0])
+
+    for i in range(0, 2):
+        for j in range(0, 2):
+            tangents = patch_d[i][j]
+            normal += tangents[0].cross(tangents[1]) * (bases_u[i] * bases_v[j])
+
+    return normal
+
+def silhouette_quadratic_patch_3d():
+    u, v = symbols('u v')
+
+    #view_point = symbolic_vector_3d('v')
     view_point = Matrix([0, 0, 0])
 
-    # points defining edge curve
-    p1 = symbolic_vector_3d('p1')
-    p2 = symbolic_vector_3d('p2')
-    p3 = symbolic_vector_3d('p3')
-    pd1 = 3 * (p2 - p1)
-    pd2 = 3 * (p3 - p2)
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')],
+    ]
 
-    bases = bezier_bases(2, v)
-    bases_d = bezier_bases(1, v)
+    # patch_d = Matrix()
+    #     [symbolic_vector_3d('q1'), symbolic_vector_3d('q2')],
+    #     [symbolic_vector_3d('q3'), symbolic_vector_3d('q4')],
+    # )
 
-    points = (p1, p2, p3)
-    points_d = (pd1, pd2)
+    patch_d = [
+        [[3 * (patch[0][1] - patch[1][1]), 3 * (patch[0][1] - patch[0][2])], [3 * (patch[2][1] - patch[1][1]), 3 * (patch[1][2] - patch[1][1])]],
+        [[3 * (patch[1][0] - patch[0][0]), 3 * (patch[0][1] - patch[0][0])], [3 * (patch[2][0] - patch[1][0]), 3 * (patch[1][1] - patch[1][0])]],
+    ]
 
-    pos = make_bezier_expr(points, bases)(v)
-    tng = make_bezier_expr(points_d, bases_d)(v)
+    pos = quadratic_patch_pos_3d(patch, u, v)
+    normal = quadratic_patch_normal_3d(patch_d, u, v)
 
-    '''
-    todo: get bi_tangent.
+    pprint(normal)
 
-    for any point along cuve defning the edge of a
-    patch, bi_tangent is exclusively defined by first
-    2 control points of the tangent curve, so linear,
-    not quadratic
-    '''
-    bi_tng = symbolic_vector_3d('bi_tng')
+    # viewdir = pos - view_point
 
-    normal = tng.cross(bi_tng)
-    viewdir = pos - view_point
-
-    solution = viewdir.dot(normal)
-    solution = expand(solution)
+    # solution = viewdir.dot(normal)
+    # solution = expand(solution)
 
     # pprint(solution)
 
-    poly = to_polynomial(solution, v)
-    print("Got polynomial of degree: " + str(poly.degree()))
+    # poly = to_polynomial(solution, v)
+    # print("Got polynomial of degree: " + str(poly.degree()))
 
-    solution = solveset(solution, v)
-    common, exprs = cse(solution, numbered_symbols('a'))
+    # solution = solveset(solution, v)
+    # common, exprs = cse(solution, numbered_symbols('a'))
 
-    print_code(common, exprs)
+    # print_code(common, exprs)
 
 def quadratic_2d_bezier():
     symbs = symbols('t, p1, p2, p3')
@@ -736,8 +695,7 @@ def main():
 
     # silhouette_cubic_2d()
     # silhouette_quadratic_2d()
-    # silhouette_quadratic_2d_linalg()
-    silhouette_quadratic_patch_3d_linalg()
+    silhouette_quadratic_patch_3d()
 
     # quadratic_2d_bezier()
 
