@@ -627,6 +627,8 @@ def quadratic_patch_normal_3d(patch_d, u, v):
 def silhouette_quadratic_patch_3d():
     u, v = symbols('u v')
 
+    v = 0
+
     #view_point = symbolic_vector_3d('v')
     view_point = Matrix([0, 0, 0])
 
@@ -649,17 +651,15 @@ def silhouette_quadratic_patch_3d():
     pos = quadratic_patch_pos_3d(patch, u, v)
     normal = quadratic_patch_normal_3d(patch_d, u, v)
 
-    pprint(normal)
+    viewdir = pos - view_point
 
-    # viewdir = pos - view_point
-
-    # solution = viewdir.dot(normal)
-    # solution = expand(solution)
+    solution = viewdir.dot(normal)
+    solution = expand(solution)
 
     # pprint(solution)
 
-    # poly = to_polynomial(solution, v)
-    # print("Got polynomial of degree: " + str(poly.degree()))
+    poly = to_polynomial(solution, u)
+    print("Got polynomial of degree: " + str(poly.degree()))
 
     # solution = solveset(solution, v)
     # common, exprs = cse(solution, numbered_symbols('a'))
