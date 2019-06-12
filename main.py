@@ -75,7 +75,7 @@ def to_oriented_curve_2d(expr):
     return (expr_subbed)
 
 
-def to_oriented_curve_3d(expr):
+def to_oriented_cubic_curve_3d_xyz(expr):
     x1, y1, z1, y4, z4 = symbols('x1, y1, z1, y4, z4')
     expr_subbed = expr \
         .subs(x1, 0) \
@@ -85,6 +85,12 @@ def to_oriented_curve_3d(expr):
         .subs(z4, 0) \
 
     return (expr_subbed)
+
+
+def to_oriented_quadratic_curve_3d_p(expr):
+    symbs = symbols('p1_x p1_y p1_z p3_y p3_z')
+    subs = { k: v for k, v in map(lambda s: [s, 0], symbs) }
+    return expr.subs(subs)
 
 # Replace repeaded terms with variable names to emphasize their cachable nature
 #
@@ -367,7 +373,7 @@ def inflections_3d():
 
     for i in range(0, len(exprs)):
         exprs[i] = substitute_coeffs(exprs[i])
-        exprs[i] = to_oriented_curve_3d(exprs[i])
+        exprs[i] = to_oriented_cubic_curve_3d_xyz(exprs[i])
         exprs[i] = simplify(exprs[i])
     
     # todo: IF WE GET CUBICS HERE, our formulation of the
@@ -471,7 +477,7 @@ def silhouette_cubic_2d():
 
     solution = viewdir_x * normal_x + viewdir_y * normal_y
     solution = expand(solution)
-    solution = to_oriented_curve_3d(solution)
+    solution = to_oriented_cubic_curve_3d_xyz(solution)
 
     poly = to_polynomial(solution, t)
     print("Got polynomial of degree: " + str(poly.degree()))
@@ -501,7 +507,7 @@ def symbolic_vector_2d(name):
 
 def symbolic_vector_3d(name):
     bases = ('x', 'y', 'z')
-    bases = map(lambda c: name + "_" + c + " ", bases)
+    bases = map(lambda c: name + "_" + c + ", ", bases)
     bases = reduce(lambda a, b: a + b, bases)
     x, y, z = symbols(bases)
     return Matrix([x, y, z])
@@ -629,8 +635,8 @@ def silhouette_quadratic_patch_3d():
 
     v = 0
 
-    #view_point = symbolic_vector_3d('v')
-    view_point = Matrix([0, 0, 0])
+    view_point = symbolic_vector_3d('pview')
+    # view_point = Matrix([0, 0, 0])
 
     patch = [
         [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
@@ -656,14 +662,17 @@ def silhouette_quadratic_patch_3d():
     solution = viewdir.dot(normal)
     solution = expand(solution)
 
-    # pprint(solution)
+    solution = to_oriented_quadratic_curve_3d_p(solution)
 
-    poly = to_polynomial(solution, u)
-    print("Got polynomial of degree: " + str(poly.degree()))
+    pprint(solution)
 
-    # solution = solveset(solution, v)
-    # common, exprs = cse(solution, numbered_symbols('a'))
+    # poly = to_polynomial(solution, u)
+    # print("Got polynomial of degree: " + str(poly.degree()))
 
+    solution = solveset(solution, u)
+    common, exprs = cse(solution, numbered_symbols('a'))
+
+    print_pretty(common, exprs)
     # print_code(common, exprs)
 
 def quadratic_2d_bezier():
@@ -687,6 +696,13 @@ def quadratic_2d_bezier():
     print("Tangent:")
     print_code(common, exprs)
 
+def test_symbol_replacement():
+    p1 = symbolic_vector_3d("p1")
+    print("Before: ")
+    pprint(p1)
+    print("After: ")
+    p1 = to_oriented_quadratic_curve_3d_p(p1)
+    pprint(p1)
 
 def main():
     # inflections_3d()
