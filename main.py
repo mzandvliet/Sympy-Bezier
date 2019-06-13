@@ -87,8 +87,7 @@ def to_oriented_cubic_curve_3d_xyz(expr):
     return (expr_subbed)
 
 
-def to_oriented_quadratic_curve_3d_p(expr):
-    symbs = symbols('p1_x p1_y p1_z p3_y p3_z')
+def set_to_zero(symbs, expr):
     subs = { k: v for k, v in map(lambda s: [s, 0], symbs) }
     return expr.subs(subs)
 
@@ -171,6 +170,11 @@ def print_code(common, exprs):
     for i, expr in enumerate(exprs):
         print("float root_%d = " % i + ccode(expr) + ";")
 
+'''
+Poor man's CodeGen: take ccode output, and format it to valid
+C# through very dodge string manipulation
+'''
+
 def csharp(code):
     code = ccode(code)
     code = code[1:-1]
@@ -179,6 +183,48 @@ def csharp(code):
     code = code.replace("pow", "math.pow")
     code = code.replace("sqrt", "math.sqrt")
     code = "float " + code + ";"
+
+    code = replace_vector_vars(code)
+    code = format_floats(code)
+
+    return code
+
+
+def replace_vector_vars(code):
+    '''
+    Scan through string finding occurances of 'p*_*'
+    Replace each with 'curve[*].*'
+    '''
+    pos = 0
+    while True:
+        pos = code.find('p', pos)
+        if pos == -1:
+            break
+
+        if code[pos+2] == '_':
+            idx = int(code[pos+1])
+            idx -= 1
+            code = code[0:pos] + "curve[" + str(idx) + "]." + code[pos+3:]
+        else:
+            pos += 1
+    return code
+
+
+def format_floats(code):
+    '''
+    Scan through string finding occurances of 'n.n'
+    Replace each with 'n.nf'
+    '''
+    pos = 0
+    while True:
+        pos = code.find('.', pos)
+        if pos == -1:
+            break
+
+        if code[pos-1].isdigit() and code[pos+1].isdigit() and code[pos+2] != 'f':
+            code = code[0:pos+2] + "f" + code[pos+2:]
+        else:
+            pos += 1
     return code
 
 def substitute_coeffs(expr):
@@ -524,7 +570,7 @@ def silhouette_quadratic_2d():
     t = symbols('t')
 
     # v = symbolic_vector_2d('v')
-    view_point = Matrix([0,0,0])
+    view_point = Matrix([0,0])
 
     p1 = symbolic_vector_2d('p1')
     p2 = symbolic_vector_2d('p2')
@@ -555,56 +601,6 @@ def silhouette_quadratic_2d():
     common, exprs = cse(solution, numbered_symbols('a'))
     print_code(common, exprs)
 
-'''
-Find silhouette of a square, quadratic bezier patch;
-which is a net of 9 points.
-
---
-
-Important: We want to find a silhouette CURVE, not
-a poorly defined locus of silhouette points.
-
-Therefore, grad(dot(viewdir(p(u,v)), n(u,v))) will not do,
-as we would be left clueless as to which points to actually
-construct our silhouette curve from.
-
---
-
-We know that, supposing solution is a quadratic curve defined
-by some p1, p2, p3, that p1 and p3 lie on patch edges,
-parameterized by some scalar params edge1_v, edge2_v.
-
-It would therefore suffice to look exclusively along expected
-patch edge for each of those.
-
-Idea:
-
-class square_patch_quadratic_3d
-    9 control points
-    eval_point(u,v)
-    eval_tangent(u,v)
-    eval_normal(u,v)
-
-With u or v = 0, or 1, the equations would automatically
-simplify, because of the p*t and p*(1-t) terms
-
-Can then process the 4 edge curves using a subroutine:
-eval_normal(u,0)
-eval_normal(u,1)
-eval_normal(0,v)
-eval_normal(1,v)
-
---
-
-Possible Optimizations
-- Align view_point or p1 to [0,0,0]
-- Align last curve point to [x,0,0]
-- Align a prominent tangent to [x,0,0]
-- Solve 2d sub problems, instead of general 3d ones
-etc.
-'''
-
-
 def quadratic_patch_pos_3d(patch, u, v):
     bases_u = bezier_bases(2, u)
     bases_v = bezier_bases(2, v)
@@ -630,13 +626,71 @@ def quadratic_patch_normal_3d(patch_d, u, v):
 
     return normal
 
+
+'''
+Find silhouette of a square, quadratic bezier patch;
+which is a net of 9 points.
+
+--
+
+Important: We want to find a silhouette CURVE, not
+a poorly defined locus of silhouette points.
+
+Therefore, grad(dot(viewdir(p(u,v)), n(u,v))) will not do,
+as we would be left clueless as to which points to actually
+construct our silhouette curve from.
+
+--
+
+We know that, supposing solution is a polynomial curve defined
+by some p1, p2, ..., pn, that p1 and pn lie on patch's edge curves,
+parameterized by some scalar params edge1_v, edge2_v.
+
+It would therefore suffice to look exclusively along expected
+patch edge for each of those, right?
+
+Idea:
+
+class square_patch_quadratic_3d
+    9 control points
+    eval_point(u,v)
+    eval_tangent(u,v)
+    eval_normal(u,v)
+
+With u or v = 0, or 1, the equations would automatically
+simplify, because of the p*t and p*(1-t) terms
+
+Can then process the 4 edge curves using a subroutine:
+eval_normal(u,0)
+eval_normal(u,1)
+eval_normal(0,v)
+eval_normal(1,v)
+
+Result: works, but we do get cubic solutions...
+
+New idea: project view_pos, view-dir onto curve plane,
+solve in 2d. Actual code would first need to check if
+this is possible, with an early-rejection test.
+
+--
+
+Possible Optimizations
+- Align view_point or p1 to [0,0,0]
+- Align last curve point to [x,0,0]
+- Align a prominent tangent to [x,0,0]
+- Align whole quadratic curve to basis plane
+- Solve 2d sub problems, instead of general 3d ones
+etc.
+'''
 def silhouette_quadratic_patch_3d():
     u, v = symbols('u v')
 
+    # bottom edge only
     v = 0
 
     view_point = symbolic_vector_3d('pview')
     # view_point = Matrix([0, 0, 0])
+    view_point[2] = 0
 
     patch = [
         [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
@@ -644,11 +698,12 @@ def silhouette_quadratic_patch_3d():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')],
     ]
 
-    # patch_d = Matrix()
-    #     [symbolic_vector_3d('q1'), symbolic_vector_3d('q2')],
-    #     [symbolic_vector_3d('q3'), symbolic_vector_3d('q4')],
-    # )
+    # patch_d = [
+    #     [[symbolic_vector_3d('q1u'), symbolic_vector_3d('q1v')], [symbolic_vector_3d('q2u'), symbolic_vector_3d('q2v')]],
+    #     [[symbolic_vector_3d('q3u'), symbolic_vector_3d('q3v')], [symbolic_vector_3d('q4u'), symbolic_vector_3d('q4v')]]
+    # ]
 
+    # todo: generate these derivative points, q, using a function
     patch_d = [
         [[3 * (patch[0][1] - patch[1][1]), 3 * (patch[0][1] - patch[0][2])], [3 * (patch[2][1] - patch[1][1]), 3 * (patch[1][2] - patch[1][1])]],
         [[3 * (patch[1][0] - patch[0][0]), 3 * (patch[0][1] - patch[0][0])], [3 * (patch[2][0] - patch[1][0]), 3 * (patch[1][1] - patch[1][0])]],
@@ -662,9 +717,12 @@ def silhouette_quadratic_patch_3d():
     solution = viewdir.dot(normal)
     solution = expand(solution)
 
-    solution = to_oriented_quadratic_curve_3d_p(solution)
+    # Todo: something like this, but for each separate edge curve
+    # also not that we can lay any quadratic float on a basis plane, which
+    # is even better
+    solution = set_to_zero(symbols('p1_x p1_y p1_z p2_z p3_y p3_z'), solution)
 
-    pprint(solution)
+    # pprint(solution)
 
     # poly = to_polynomial(solution, u)
     # print("Got polynomial of degree: " + str(poly.degree()))
@@ -672,8 +730,8 @@ def silhouette_quadratic_patch_3d():
     solution = solveset(solution, u)
     common, exprs = cse(solution, numbered_symbols('a'))
 
-    print_pretty(common, exprs)
-    # print_code(common, exprs)
+    # print_pretty(common, exprs)
+    print_code(common, exprs)
 
 def quadratic_2d_bezier():
     symbs = symbols('t, p1, p2, p3')
@@ -696,13 +754,13 @@ def quadratic_2d_bezier():
     print("Tangent:")
     print_code(common, exprs)
 
-def test_symbol_replacement():
-    p1 = symbolic_vector_3d("p1")
-    print("Before: ")
-    pprint(p1)
-    print("After: ")
-    p1 = to_oriented_quadratic_curve_3d_p(p1)
-    pprint(p1)
+# def test_symbol_replacement():
+#     p1 = symbolic_vector_3d("p1")
+#     print("Before: ")
+#     pprint(p1)
+#     print("After: ")
+#     p1 = set_to_zero(p1)
+#     pprint(p1)
 
 def main():
     # inflections_3d()
@@ -710,10 +768,15 @@ def main():
     # height_maxima_3d()
 
     # silhouette_cubic_2d()
-    # silhouette_quadratic_2d()
-    silhouette_quadratic_patch_3d()
+    silhouette_quadratic_2d()
+    # silhouette_quadratic_patch_3d()
 
     # quadratic_2d_bezier()
+
+    # code = "float a8 = (1.0/2.0)*math.sqrt(-4*a1*a5 - 2*a2*a3 - 4*a2*curve[2].x*curve[2].y + math.pow(curve[1].x, 2)*math.pow(curve[3].y, 2) + 4*curve[1].x*math.pow(curve[2].y, 2)*curve[3].x + math.pow(curve[1].y, 2)*math.pow(curve[3].x, 2) + 4*curve[1].y*math.pow(curve[2].x, 2)*curve[3].y)/(a0 - a1 - a2 + a3 - a5 + a6)"
+    # code = format_floats(code)
+    # print(code)
+
 
 if __name__ == "__main__":
     main()
