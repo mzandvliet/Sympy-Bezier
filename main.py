@@ -569,12 +569,14 @@ def silhouette_quadratic_2d():
 
     t = symbols('t')
 
-    # v = symbolic_vector_2d('v')
-    view_point = Matrix([0,0])
+    view_point = symbolic_vector_2d('viewPoint')
+    # view_point = Matrix([0,0])
 
     p1 = symbolic_vector_2d('p1')
     p2 = symbolic_vector_2d('p2')
     p3 = symbolic_vector_2d('p3')
+
+    p1 = Matrix([0, 0])
 
     pd1 = 3 * (p2 - p1)
     pd2 = 3 * (p3 - p2)
