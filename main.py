@@ -472,6 +472,29 @@ def curvature_maxima_3d():
     print_code(common, exprs)
 
 
+def maxima_1st_cubic_2d():
+    t = symbols('t')
+
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+    p4 = symbolic_vector_2d('p4')
+
+    points = [p1, p2, p3, p4]
+    points_d = get_curve_point_deltas(points, 3)
+
+    bases_d = bezier_bases(2, t)
+
+    pd = make_bezier_expr(points_d, bases_d)(t)
+    pd = expand(pd)
+
+    solutions = map(lambda partial: solveset(partial, t).args[0], pd)
+
+    common, exprs = cse(solutions, numbered_symbols('a'))
+
+    # print_pretty(common, exprs)
+    print_code(common, exprs)
+
 def maxima_2nd_cubic_2d():
     t = symbols('t')
 
@@ -801,7 +824,8 @@ def main():
 
     # quadratic_2d_bezier()
 
-    maxima_2nd_cubic_2d()
+    maxima_1st_cubic_2d()
+    # maxima_2nd_cubic_2d()
     # inflections_cubic_2d()
 
 
