@@ -42,6 +42,21 @@ def to_latex_docstring(expr):
 
     return doc_srt
 
+
+def symbolic_vector_2d(name):
+    bases = ('x', 'y')
+    bases = map(lambda c: name + "_" + c + " ", bases)
+    bases = reduce(lambda a, b: a + b, bases)
+    x, y = symbols(bases)
+    return Matrix([x, y])
+
+def symbolic_vector_3d(name):
+    bases = ('x', 'y', 'z')
+    bases = map(lambda c: name + "_" + c + ", ", bases)
+    bases = reduce(lambda a, b: a + b, bases)
+    x, y, z = symbols(bases)
+    return Matrix([x, y, z])
+
 def bernstein_basis(n, i, param):
     basis = binomial(n, i) * param**i * (1 - param)**(n-i)
 
@@ -455,6 +470,43 @@ def curvature_maxima_3d():
     # print_pretty(common, exprs)
     print_code(common, exprs)
 
+def inflections_cubic_2d():
+    t = symbols('t')
+
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+    p4 = symbolic_vector_2d('p4')
+
+    points = [p1, p2, p3, p4]
+    points_d = get_curve_point_deltas(points, 3)
+    points_dd = get_curve_point_deltas(points_d, 2)
+
+    bases_d = bezier_bases(2, t)
+    bases_dd = bezier_bases(1, t)
+
+    pd = make_bezier_expr(points_d, bases_d)
+    pdd = make_bezier_expr(points_dd, bases_dd)
+
+    curvature = cross_2d(pd(t), pdd(t))
+    curvature = expand(curvature)
+
+    a = solveset(Eq(curvature,0), t)
+
+    common, exprs = cse(a, numbered_symbols('a'))
+
+    # print_pretty(common, exprs)
+    print_code(common, exprs)
+
+def get_curve_point_deltas(points, multiplier):
+    deltas = []
+    for i in range(0, len(points)-1):
+        deltas.append(multiplier * (points[i+1] - points[i]))
+    return deltas
+
+def cross_2d(p1, p2):
+    return p1[0] * p2[1] - p1[1] * p2[0]
+
 def height_maxima_3d():
     t, expr = bezier_height_dt_3d()
     expr = substitute_coeffs(expr)
@@ -464,26 +516,6 @@ def height_maxima_3d():
 
     print_pretty(common, exprs)
     print_code(common, exprs)
-
-def inflections_2d():
-    symbs, expr = bezier_curvature_2d()
-
-    t = symbs[0]
-
-    symbs, expr = to_oriented_curve_2d(expr)
-    symbs, expr, subst = cache_variables(symbs, expr)  # substitute with a,b,c,d
-    # pprint(expr)
-
-    expr = collect(expr, t)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
-
-    # expr = factor(expr) # factor out common 18
-    # todo store factor, and remove it from expr temporarily
-    # in a way that works with the polynomical coefficients below
-
-    a, b = solve_quadratic(expr, t)
-    common, exprs = cse([a, b], numbered_symbols('a'))
-    print_code(common, exprs)
-
 
 def silhouette_cubic_2d():
     t = symbols('t')
@@ -534,29 +566,6 @@ def silhouette_cubic_2d():
     # common, exprs = cse(solution, numbered_symbols('a'))
 
     # print_code(common, exprs)
-
-# make a point using a 3d coordinate system from the linear algebra module
-# def point(N, name):
-#     bases = ('x', 'y', 'z')
-#     bases = map(lambda c: name + "_" + c + " ", bases)
-#     bases = reduce(lambda a, b: a + b, bases)
-#     x, y, z = symbols(bases)
-#     return x*N.i + y*N.j + z*N.k
-
-def symbolic_vector_2d(name):
-    bases = ('x', 'y')
-    bases = map(lambda c: name + "_" + c + " ", bases)
-    bases = reduce(lambda a, b: a + b, bases)
-    x, y = symbols(bases)
-    return Matrix([x, y])
-
-
-def symbolic_vector_3d(name):
-    bases = ('x', 'y', 'z')
-    bases = map(lambda c: name + "_" + c + ", ", bases)
-    bases = reduce(lambda a, b: a + b, bases)
-    x, y, z = symbols(bases)
-    return Matrix([x, y, z])
 
 def silhouette_quadratic_2d():
     # The setup:
@@ -770,14 +779,12 @@ def main():
     # height_maxima_3d()
 
     # silhouette_cubic_2d()
-    silhouette_quadratic_2d()
+    # silhouette_quadratic_2d()
     # silhouette_quadratic_patch_3d()
 
     # quadratic_2d_bezier()
 
-    # code = "float a8 = (1.0/2.0)*math.sqrt(-4*a1*a5 - 2*a2*a3 - 4*a2*curve[2].x*curve[2].y + math.pow(curve[1].x, 2)*math.pow(curve[3].y, 2) + 4*curve[1].x*math.pow(curve[2].y, 2)*curve[3].x + math.pow(curve[1].y, 2)*math.pow(curve[3].x, 2) + 4*curve[1].y*math.pow(curve[2].x, 2)*curve[3].y)/(a0 - a1 - a2 + a3 - a5 + a6)"
-    # code = format_floats(code)
-    # print(code)
+    inflections_cubic_2d()
 
 
 if __name__ == "__main__":
