@@ -45,7 +45,7 @@ def to_latex_docstring(expr):
 
 def symbolic_vector_2d(name):
     bases = ('x', 'y')
-    bases = map(lambda c: name + "_" + c + " ", bases)
+    bases = map(lambda c: name + "_" + c + ", ", bases)
     bases = reduce(lambda a, b: a + b, bases)
     x, y = symbols(bases)
     return Matrix([x, y])
@@ -183,7 +183,7 @@ def print_code(common, exprs):
     print("\n----------------roots-------------------\n")
 
     for i, expr in enumerate(exprs):
-        print("float root_%d = " % i + ccode(expr) + ";")
+        print("float root_%d = " % i + replace_vector_vars(ccode(expr)) + ";")
 
 '''
 Poor man's CodeGen: take ccode output, and format it to valid
@@ -217,6 +217,7 @@ def replace_vector_vars(code):
             break
 
         if code[pos+2] == '_':
+            
             idx = int(code[pos+1])
             idx -= 1
             code = code[0:pos] + "curve[" + str(idx) + "]." + code[pos+3:]
@@ -470,6 +471,32 @@ def curvature_maxima_3d():
     # print_pretty(common, exprs)
     print_code(common, exprs)
 
+
+def maxima_2nd_cubic_2d():
+    t = symbols('t')
+
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+    p4 = symbolic_vector_2d('p4')
+
+    points = [p1, p2, p3, p4]
+    points_d = get_curve_point_deltas(points, 3)
+    points_dd = get_curve_point_deltas(points_d, 2)
+
+    bases_d = bezier_bases(2, t)
+    bases_dd = bezier_bases(1, t)
+
+    pdd = make_bezier_expr(points_dd, bases_dd)(t)
+    pdd = expand(pdd)
+
+    solutions = map(lambda partial: solveset(partial,t).args[0], pdd)
+
+    common, exprs = cse(solutions, numbered_symbols('a'))
+
+    # print_pretty(common, exprs)
+    print_code(common, exprs)
+
 def inflections_cubic_2d():
     t = symbols('t')
 
@@ -506,16 +533,6 @@ def get_curve_point_deltas(points, multiplier):
 
 def cross_2d(p1, p2):
     return p1[0] * p2[1] - p1[1] * p2[0]
-
-def height_maxima_3d():
-    t, expr = bezier_height_dt_3d()
-    expr = substitute_coeffs(expr)
-    expr = simplify(expr)
-    a = solveset(expr, t)
-    common, exprs = cse(a, numbered_symbols('a'))
-
-    print_pretty(common, exprs)
-    print_code(common, exprs)
 
 def silhouette_cubic_2d():
     t = symbols('t')
@@ -784,7 +801,8 @@ def main():
 
     # quadratic_2d_bezier()
 
-    inflections_cubic_2d()
+    maxima_2nd_cubic_2d()
+    # inflections_cubic_2d()
 
 
 if __name__ == "__main__":
