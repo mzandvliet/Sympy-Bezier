@@ -490,6 +490,74 @@ def silhouette_quadratic_2d():
     common, exprs = cse(solution, numbered_symbols('a'))
     print_code(common, exprs)
 
+def silhouette_quadratic_projected_2d():
+    '''
+
+    Like above, but for an aligned slide of a 3d patch.
+    Edges, and middles.
+
+    Can still transform to 2d plane and solve there,
+    but now need full normal information around the
+    slice curve.
+
+    Normals can be fully described by transformed versions
+    of either:
+
+    6 control points for edge, or 9 controls points for middles
+    2 control point deltas for edge, or 4 deltas for middles
+    
+    (Hmm, think about the normals for middle. What can we say
+    about them, such that we do not need to consider all 9 controls?)
+
+    In this SymPy formulation, we can assume that we recieved
+    a 4-point delta patch, already aligned to 2d plane
+
+    '''
+
+    t = symbols('t')
+
+    view_point = symbolic_vector_3d('viewPoint')
+
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    p1 = Matrix([0,0,0])
+    p2[2] = 0
+    p3[2] = 0
+
+    # pd1 = 3 * (p2 - p1) etc
+    patch_d = [
+        [[symbolic_vector_3d('pd1_u'), symbolic_vector_3d('pd1_v')], [symbolic_vector_3d('pd2_u'), symbolic_vector_3d('pd2_v')]],
+        [[symbolic_vector_3d('pd3_u'), symbolic_vector_3d('pd3_v')], [symbolic_vector_3d('pd4_u'), symbolic_vector_3d('pd4_v')]],
+    ]
+
+    # Note: using only edge pd1, pd2 right now, instead of full delta patch, for normal
+
+    bases = bezier_bases(2, t)
+    bases_d = bezier_bases(1, t)
+
+    points = (p1, p2, p3)
+    p = make_bezier_expr(points, bases)(t)
+
+    # Todo: build lib functions for creating delta patchs, and sampling normals from them
+    pd_u = make_bezier_expr((patch_d[0][0][0], patch_d[0][1][0]), bases_d)(t)
+    pd_v = make_bezier_expr((patch_d[0][0][1], patch_d[0][1][1]), bases_d)(t)
+
+    normal = pd_u.cross(pd_v)
+    viewdir = p - view_point
+
+    solution = viewdir.dot(normal)
+    solution = expand(solution)
+
+    poly = to_polynomial(solution, t)
+    print("Got polynomial of degree: " + str(poly.degree()))
+
+    solution = solveset(solution, t)
+    common, exprs = cse(solution, numbered_symbols('a'))
+    print_code(common, exprs)
+
+    # Ok, we're not there yet. This is getting us a quartic thing to solve, which is no good.
+
 
 '''
 Didn't really get anywhere with this, other than realize I needed
@@ -745,6 +813,7 @@ def main():
     # silhouette_cubic_2d()
     # silhouette_quadratic_2d()
     # silhouette_quadratic_patch_3d()
+    silhouette_quadratic_projected_2d()
 
     # quadratic_2d_bezier()
 
@@ -758,7 +827,7 @@ def main():
 
     # diagonal_of_linear_patch()
     # diagonal_of_quadratic_patch()
-    slice_of_quadratic_patch()
+    # slice_of_quadratic_patch()
     
     # ballistics()
     # ballistics_bezier()
