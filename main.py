@@ -514,7 +514,7 @@ def silhouette_quadratic_projected_2d():
 
     '''
 
-    t = symbols('t')
+    u, v = symbols('u v')
 
     view_point = symbolic_vector_3d('viewPoint')
 
@@ -533,28 +533,23 @@ def silhouette_quadratic_projected_2d():
 
     # Note: using only edge pd1, pd2 right now, instead of full delta patch, for normal
 
-    bases = bezier_bases(2, t)
-    bases_d = bezier_bases(1, t)
-
+    bases = bezier_bases(2, u)
     points = (p1, p2, p3)
-    p = make_bezier_expr(points, bases)(t)
+    p = make_bezier_expr(points, bases)(u)
 
-    # Todo: build lib functions for creating delta patchs, and sampling normals from them
-    pd_u = make_bezier_expr((patch_d[0][0][0], patch_d[0][1][0]), bases_d)(t)
-    pd_v = make_bezier_expr((patch_d[0][0][1], patch_d[0][1][1]), bases_d)(t)
-
-    normal = pd_u.cross(pd_v)
+    normal = quadratic_patch_normal_3d(patch_d, u, v)
     viewdir = p - view_point
-
     solution = viewdir.dot(normal)
-    solution = expand(solution)
 
-    poly = to_polynomial(solution, t)
+    pprint(solution)
+
+    solution = expand(solution)
+    poly = to_polynomial(solution, u)
     print("Got polynomial of degree: " + str(poly.degree()))
 
-    solution = solveset(solution, t)
-    common, exprs = cse(solution, numbered_symbols('a'))
-    print_code(common, exprs)
+    # solution = solveset(solution, t)
+    # common, exprs = cse(solution, numbered_symbols('a'))
+    # print_code(common, exprs)
 
     # Ok, we're not there yet. This is getting us a quartic thing to solve, which is no good.
 
