@@ -608,10 +608,21 @@ def quadratic_2d_bezier():
     print("Tangent:")
     print_code(common, exprs)
 
-def diagonal():
-    # Essentially: linear interpolation across a quad
-    # We can see that we get solution that is quadratic in t
-    # todo: solve for a line through 2 points on surface
+def diagonal_of_linear_patch():
+    '''
+    Essentially: bilinear interpolation across a quad
+    We can see that we get solution that is quadratic in t
+    
+    todo:
+
+    solve for a line through 2 points on surface
+
+    Reformulate points as offsets from p1
+
+    I still have a notion that rewriting should yield diagonal
+    line as linear combination as the bottom left and
+    top right control point. For this flat quad, anyway.
+    '''
     p1 = symbolic_vector_3d('p1')
     p2 = symbolic_vector_3d('p2')
     p3 = symbolic_vector_3d('p3')
@@ -630,6 +641,35 @@ def diagonal():
     patch = patch.subs(v, t).subs(u, t)
 
     pprint(patch)
+
+
+def diagonal_of_quadratic_patch():
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    p4 = symbolic_vector_3d('p4')
+    p5 = symbolic_vector_3d('p5')
+    p6 = symbolic_vector_3d('p6')
+    p7 = symbolic_vector_3d('p7')
+    p8 = symbolic_vector_3d('p8')
+    p9 = symbolic_vector_3d('p9')
+
+    patch = [
+        [p1, p2, p3],
+        [p4, p5, p6],
+        [p7, p8, p9]
+    ]
+
+    u, v, t = symbols('u v t')
+
+    patch = patch_pos_3d(patch, u, v)
+    patch = patch.subs(v, t).subs(u, t)
+
+    pprint(patch)
+
+    ''' 
+    We get a quartic result for the naive case
+    '''
 
 def main():
     # inflections_3d()
@@ -650,7 +690,8 @@ def main():
 
     # inflections_cubic_3d()
 
-    diagonal()
+    # diagonal_of_linear_patch()
+    diagonal_of_quadratic_patch()
     
     # ballistics()
     # ballistics_bezier()

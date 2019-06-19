@@ -64,6 +64,9 @@ def print_code(common, exprs):
 '''
 Poor man's CodeGen: take ccode output, and format it to valid
 C# through very dodge string manipulation
+
+Todo: make a proper sympy codegen module for C#, or pipe results
+into Roslyn AST using F# or something...
 '''
 
 

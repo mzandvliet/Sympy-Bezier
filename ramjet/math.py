@@ -93,6 +93,11 @@ def get_curve_point_deltas(points, multiplier):
 
 
 def patch_pos_3d(patch, u, v):
+    '''
+    Given matrix of points and two parameters, constructs a function that
+    samples a position along the given surface. Arbitrary degree.
+    '''
+
     degree = len(patch[0])-1
     bases_u = bezier_bases(degree, u)
     bases_v = bezier_bases(degree, v)
