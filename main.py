@@ -1,82 +1,9 @@
+import math
 from sympy import *
 from sympy.physics.vector import *
-import matplotlib.pyplot as plt
-import math
 from functools import reduce
-
-'''
-    Todo:
-    - Try a factoring approach to finding some solutions. Since Beziers are built up
-    out of Berstein bases, and a lot of arithmetic is adding and multiplying those,
-    I wouldn't be surprised if we can find at least some solutions through factoring,
-    which would be far nicer than plugging everything into the quadratic formula.
-'''
-
-
-def invert_dict(dict):
-    return {v: k for k, v in dict.items()}
-
-# convert sympy expression to inline latex ready for showing in MatPlotLib
-def show_expr_latex(expr):
-    show_latex_str(latex(expr, mode='inline'))
-
-    # https://docs.sympy.org/latest/modules/printing.html#sympy.printing.latex.latex
-
-# Render a latex string using MatPlotLib
-def show_latex_str(latex_str):
-    plt.rc('text', usetex=True)
-    plt.title(latex_str)
-    plt.show()
-
-    # https://matplotlib.org/users/usetex.html
-    # Note: requires working install of LateX on PATH
-
-def to_latex_docstring(expr):
-    doc_srt = r"""
-\documentclass{article}
-\begin{document}
-    %s
-\end{document}""" % (
-        latex(expr, mode='inline')
-    )
-
-    return doc_srt
-
-
-def symbolic_vector_2d(name):
-    bases = ('x', 'y')
-    bases = map(lambda c: name + "_" + c + ", ", bases)
-    bases = reduce(lambda a, b: a + b, bases)
-    x, y = symbols(bases)
-    return Matrix([x, y])
-
-def symbolic_vector_3d(name):
-    bases = ('x', 'y', 'z')
-    bases = map(lambda c: name + "_" + c + ", ", bases)
-    bases = reduce(lambda a, b: a + b, bases)
-    x, y, z = symbols(bases)
-    return Matrix([x, y, z])
-
-def bernstein_basis(n, i, param):
-    basis = binomial(n, i) * param**i * (1 - param)**(n-i)
-
-    return basis
-
-def bezier_bases(n, param):
-    bases = []
-    for i in range(0, n+1):
-        bases.append(bernstein_basis(n, i, param))
-
-    return bases
-
-def make_bezier_expr(points, bases):
-    if len(points) != len(bases):
-        raise Exception("Number of points %i should be equal to number of bases %i" % (
-            len(points), len(bases)))
-
-    terms = [p * b for p, b in zip(points, bases)]
-    expr = reduce((lambda x, y: x + y), terms)
-    return lambda t: expr
+from ramjet.math import *
+from ramjet.util import *
 
 # Assume a given cubic curve starts at [0,0] and ends at [x,0]
 # leads to x1, y1, y2 = 0
@@ -133,116 +60,6 @@ def cache_variables(symbs, expr):
     new_symbs = symbs + sub_symbs
     return (new_symbs, expr_subbed, substitutions)
 
-def to_polynomial(expr, param):
-    expr = simplify(expr)
-    expr = collect(expr, param)  # collect in terms of a*t^0, b*t^1, c*t^2, ...
-    poly = Poly(expr, param)
-    return poly
-
-def solve_quadratic(expr, t):
-    poly = to_polynomial(expr, t)
-    print("Got polynomial of degree: " + str(poly.degree()))
-
-    coeffs = poly.coeffs()
-    v1, v2, v3 = symbols('v1 v2 v3')
-    substitutions = {
-        v1: coeffs[0],
-        v2: coeffs[1],
-        v3: coeffs[2],
-    }
-
-    expr_simple = expr.subs(invert_dict(substitutions))
-
-    # solve v1*t^2 + v2*t + v3 = 0
-    eq = Eq(expr_simple, 0)
-    roots = solve(eq, t)
-
-    root_a = roots[0].subs(substitutions)
-    root_b = roots[1].subs(substitutions)
-
-    return (root_a, root_b)
-
-
-def print_pretty(common, exprs):
-    print("\n---------------terms-----------------\n")
-
-    for t in common:
-        pprint(t)
-
-    print("\n----------------roots-------------------\n")
-
-    for expr in exprs:
-        pprint(expr)
-
-def print_code(common, exprs):
-    print("\n----------------terms-------------------\n")
-
-    for t in common:
-        print(csharp(t))
-
-    print("\n----------------roots-------------------\n")
-
-    for i, expr in enumerate(exprs):
-        print("float root_%d = " % i + replace_vector_vars(ccode(expr)) + ";")
-
-'''
-Poor man's CodeGen: take ccode output, and format it to valid
-C# through very dodge string manipulation
-'''
-
-def csharp(code):
-    code = ccode(code)
-    code = code[1:-1]
-    comma_idx = code.find(",")
-    code = code[0:comma_idx] + " =" + code[comma_idx+1:]
-    code = code.replace("pow", "math.pow")
-    code = code.replace("sqrt", "math.sqrt")
-    code = "float " + code + ";"
-
-    code = replace_vector_vars(code)
-    code = format_floats(code)
-
-    return code
-
-
-def replace_vector_vars(code):
-    '''
-    Scan through string finding occurances of 'p*_*'
-    Replace each with 'curve[*].*'
-    '''
-    pos = 0
-    while True:
-        pos = code.find('p', pos)
-        if pos == -1:
-            break
-
-        if code[pos+2] == '_':
-            
-            idx = int(code[pos+1])
-            idx -= 1
-            code = code[0:pos] + "curve[" + str(idx) + "]." + code[pos+3:]
-        else:
-            pos += 1
-    return code
-
-
-def format_floats(code):
-    '''
-    Scan through string finding occurances of 'n.n'
-    Replace each with 'n.nf'
-    '''
-    pos = 0
-    while True:
-        pos = code.find('.', pos)
-        if pos == -1:
-            break
-
-        if code[pos-1].isdigit() and code[pos+1].isdigit() and code[pos+2] != 'f':
-            code = code[0:pos+2] + "f" + code[pos+2:]
-        else:
-            pos += 1
-    return code
-
 def substitute_coeffs(expr):
     symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
     symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
@@ -274,16 +91,6 @@ def substitute_coeffs(expr):
         expr = expr.subs(substitutions)
 
     return expr
-
-# Todo: really want to use linear algebra abstractions here
-# more importantly: use proper formulations of curvature, lol
-# https://en.wikipedia.org/wiki/Curvature (Space Curves)
-# alternative: https://en.wikipedia.org/wiki/Radius_of_curvature
-# radius of curvature and curvature both defined by arclenght, bah
-#
-# Also: SIGNED curvature. Otherwise we don't get the actual
-# sign flip that we're looking for XD
-
 
 def bezier_curvature_2d():
     symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4')
@@ -409,48 +216,30 @@ def bezier_ddt_partials():
 
     return (t, result)
 
-def bezier_height_dt_3d():
+def inflections_cubic_3d():
     t = symbols('t')
 
-    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
-    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    p4 = symbolic_vector_3d('p4')
+
+    points = [p1, p2, p3, p4]
+    points_d = get_curve_point_deltas(points, 3)
+    points_dd = get_curve_point_deltas(points_d, 2)
 
     bases_d = bezier_bases(2, t)
+    bases_dd = bezier_bases(1, t)
 
-    points_y_d = (yd1, yd2, yd3)
+    pd = make_bezier_expr(points_d, bases_d)
+    pdd = make_bezier_expr(points_dd, bases_dd)
 
-    yd = make_bezier_expr(points_y_d, bases_d)
+    curvature = pd(t).cross(pdd(t))
+    curvature = expand(curvature)
+    solutions = map(lambda partial: solveset(partial, t).args[0], curvature)
 
-    return (t, yd(t))
+    common, exprs = cse(solutions, numbered_symbols('a'))
 
-def inflections_3d():
-    # Todo: formulate entirely using linear algebra
-    # will simplify the code, shrink it.
-    #
-    # Also, optimize terms to yield efficient operations
-    # on vector quantities, as that will work well with
-    # SIMD and whatnot
-
-    t, exprs = bezier_curvature_partials_3d()
-
-    for i in range(0, len(exprs)):
-        exprs[i] = substitute_coeffs(exprs[i])
-        exprs[i] = to_oriented_cubic_curve_3d_xyz(exprs[i])
-        exprs[i] = simplify(exprs[i])
-    
-    # todo: IF WE GET CUBICS HERE, our formulation of the
-    # solution is wrong. Print error.
-
-    # a, b = solve_quadratic(exprs[0], t)
-    # c, d = solve_quadratic(exprs[1], t)
-    # e, f = solve_quadratic(exprs[2], t)
-    # common, exprs = cse([a,b,c,d,e,f], numbered_symbols('a'))
-
-    a = solveset(exprs[0], t)
-    b = solveset(exprs[1], t)
-    c = solveset(exprs[2], t)
-    common, exprs = cse([a,b,c], numbered_symbols('a'))
-    
     # print_pretty(common, exprs)
     print_code(common, exprs)
 
@@ -507,7 +296,6 @@ def maxima_2nd_cubic_2d():
     points_d = get_curve_point_deltas(points, 3)
     points_dd = get_curve_point_deltas(points_d, 2)
 
-    bases_d = bezier_bases(2, t)
     bases_dd = bezier_bases(1, t)
 
     pdd = make_bezier_expr(points_dd, bases_dd)(t)
@@ -548,14 +336,64 @@ def inflections_cubic_2d():
     # print_pretty(common, exprs)
     print_code(common, exprs)
 
-def get_curve_point_deltas(points, multiplier):
-    deltas = []
-    for i in range(0, len(points)-1):
-        deltas.append(multiplier * (points[i+1] - points[i]))
-    return deltas
+def inflections_deriv_cubic_2d():
+    t = symbols('t')
 
-def cross_2d(p1, p2):
-    return p1[0] * p2[1] - p1[1] * p2[0]
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+    p4 = symbolic_vector_2d('p4')
+
+    points = [p1, p2, p3, p4]
+    points_d = get_curve_point_deltas(points, 3)
+    points_dd = get_curve_point_deltas(points_d, 2)
+
+    bases_d = bezier_bases(2, t)
+    bases_dd = bezier_bases(1, t)
+
+    pd = make_bezier_expr(points_d, bases_d)
+    pdd = make_bezier_expr(points_dd, bases_dd)
+
+    curvature = cross_2d(pd(t), pdd(t))
+    curvature = expand(curvature)
+
+    curvature_deriv = diff(curvature, t)
+
+    a = solveset(Eq(curvature_deriv, 0), t)
+
+    common, exprs = cse(a, numbered_symbols('a'))
+
+    # print_pretty(common, exprs)
+    print_code(common, exprs)
+
+def curvature_maxima_cubic_2d():
+    t = symbols('t')
+
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+    p4 = symbolic_vector_2d('p4')
+
+    p1 = Matrix([0,0])
+    p4[1] = 0
+
+    points = [p1, p2, p3, p4]
+    points_d = get_curve_point_deltas(points, 3)
+    points_dd = get_curve_point_deltas(points_d, 2)
+
+    bases_d = bezier_bases(2, t)
+    bases_dd = bezier_bases(1, t)
+
+    pd = make_bezier_expr(points_d, bases_d)
+    pdd = make_bezier_expr(points_dd, bases_dd)
+
+    # Full curvature definition: https://pomax.github.io/bezierinfo/#curvature
+
+    curvature = cross_2d(pd(t), pdd(t)) / (pd(t)[0]**2 + pd(t)[1]**2)**Rational(3/2)
+    curvature = simplify(curvature)
+    curv_dif = diff(curvature, t)
+
+    # this results in an absolutely soul-destroying mountain equation. Nevermind :P
 
 def silhouette_cubic_2d():
     t = symbols('t')
@@ -652,31 +490,6 @@ def silhouette_quadratic_2d():
     common, exprs = cse(solution, numbered_symbols('a'))
     print_code(common, exprs)
 
-def quadratic_patch_pos_3d(patch, u, v):
-    bases_u = bezier_bases(2, u)
-    bases_v = bezier_bases(2, v)
-
-    pos = Matrix([0, 0, 0])
-
-    for i in range(0, 3):
-        for j in range(0, 3):
-            pos += patch[i][j] * bases_u[i] * bases_v[j]
-
-    return pos
-
-def quadratic_patch_normal_3d(patch_d, u, v):
-    bases_u = bezier_bases(1, u)
-    bases_v = bezier_bases(1, v)
-
-    normal = Matrix([0, 0, 0])
-
-    for i in range(0, 2):
-        for j in range(0, 2):
-            tangents = patch_d[i][j]
-            normal += tangents[0].cross(tangents[1]) * (bases_u[i] * bases_v[j])
-
-    return normal
-
 
 '''
 Find silhouette of a square, quadratic bezier patch;
@@ -737,11 +550,8 @@ def silhouette_quadratic_patch_3d():
     u, v = symbols('u v')
 
     # bottom edge only
-    v = 0
-
     view_point = symbolic_vector_3d('pview')
     # view_point = Matrix([0, 0, 0])
-    view_point[2] = 0
 
     patch = [
         [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
@@ -762,27 +572,20 @@ def silhouette_quadratic_patch_3d():
 
     pos = quadratic_patch_pos_3d(patch, u, v)
     normal = quadratic_patch_normal_3d(patch_d, u, v)
-
     viewdir = pos - view_point
+    dot = viewdir.dot(normal)
+    # dot = Lambda((u, v), dot)
 
-    solution = viewdir.dot(normal)
-    solution = expand(solution)
+    partials_u = simplify(dot.diff(u))
+    partials_v = simplify(dot.diff(v))
+    print("=== U ===")
+    pprint(partials_u)
+    print("=== V ===")
+    pprint(partials_v)
+    
 
-    # Todo: something like this, but for each separate edge curve
-    # also not that we can lay any quadratic float on a basis plane, which
-    # is even better
-    solution = set_to_zero(symbols('p1_x p1_y p1_z p2_z p3_y p3_z'), solution)
-
+    # solution = pdsolve(partials, dot)
     # pprint(solution)
-
-    # poly = to_polynomial(solution, u)
-    # print("Got polynomial of degree: " + str(poly.degree()))
-
-    solution = solveset(solution, u)
-    common, exprs = cse(solution, numbered_symbols('a'))
-
-    # print_pretty(common, exprs)
-    print_code(common, exprs)
 
 def quadratic_2d_bezier():
     symbs = symbols('t, p1, p2, p3')
@@ -805,13 +608,28 @@ def quadratic_2d_bezier():
     print("Tangent:")
     print_code(common, exprs)
 
-# def test_symbol_replacement():
-#     p1 = symbolic_vector_3d("p1")
-#     print("Before: ")
-#     pprint(p1)
-#     print("After: ")
-#     p1 = set_to_zero(p1)
-#     pprint(p1)
+def diagonal():
+    # Essentially: linear interpolation across a quad
+    # We can see that we get solution that is quadratic in t
+    # todo: solve for a line through 2 points on surface
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    p4 = symbolic_vector_3d('p4')
+
+    patch = [
+        [p1, p2],
+        [p3, p4]
+    ]
+
+    u, v, t = symbols('u v t')
+
+    patch = patch_pos_3d(patch, u, v)
+
+    patch.subs(p2, p2 - p1).subs(p3, p3 - p1)
+    patch = patch.subs(v, t).subs(u, t)
+
+    pprint(patch)
 
 def main():
     # inflections_3d()
@@ -824,9 +642,18 @@ def main():
 
     # quadratic_2d_bezier()
 
-    maxima_1st_cubic_2d()
+    # maxima_1st_cubic_2d()
     # maxima_2nd_cubic_2d()
     # inflections_cubic_2d()
+    # inflections_deriv_cubic_2d()
+    # curvature_maxima_cubic_2d()
+
+    # inflections_cubic_3d()
+
+    diagonal()
+    
+    # ballistics()
+    # ballistics_bezier()
 
 
 if __name__ == "__main__":
