@@ -492,59 +492,8 @@ def silhouette_quadratic_2d():
 
 
 '''
-Find silhouette of a square, quadratic bezier patch;
-which is a net of 9 points.
-
---
-
-Important: We want to find a silhouette CURVE, not
-a poorly defined locus of silhouette points.
-
-Therefore, grad(dot(viewdir(p(u,v)), n(u,v))) will not do,
-as we would be left clueless as to which points to actually
-construct our silhouette curve from.
-
---
-
-We know that, supposing solution is a polynomial curve defined
-by some p1, p2, ..., pn, that p1 and pn lie on patch's edge curves,
-parameterized by some scalar params edge1_v, edge2_v.
-
-It would therefore suffice to look exclusively along expected
-patch edge for each of those, right?
-
-Idea:
-
-class square_patch_quadratic_3d
-    9 control points
-    eval_point(u,v)
-    eval_tangent(u,v)
-    eval_normal(u,v)
-
-With u or v = 0, or 1, the equations would automatically
-simplify, because of the p*t and p*(1-t) terms
-
-Can then process the 4 edge curves using a subroutine:
-eval_normal(u,0)
-eval_normal(u,1)
-eval_normal(0,v)
-eval_normal(1,v)
-
-Result: works, but we do get cubic solutions...
-
-New idea: project view_pos, view-dir onto curve plane,
-solve in 2d. Actual code would first need to check if
-this is possible, with an early-rejection test.
-
---
-
-Possible Optimizations
-- Align view_point or p1 to [0,0,0]
-- Align last curve point to [x,0,0]
-- Align a prominent tangent to [x,0,0]
-- Align whole quadratic curve to basis plane
-- Solve 2d sub problems, instead of general 3d ones
-etc.
+Didn't really get anywhere with this, other than realize I needed
+to change my approach
 '''
 def silhouette_quadratic_patch_3d():
     u, v = symbols('u v')
@@ -642,8 +591,87 @@ def diagonal_of_linear_patch():
 
     pprint(patch)
 
+def bezier_quartic():
+    t = symbols('t')
+    
+    p1, p2, p3, p4, p5 = symbols('p1 p2 p3 p4 p5')
+    # p2 = symbolic_vector_3d('p2')
+    # p3 = symbolic_vector_3d('p3')
+    # p4 = symbolic_vector_3d('p4')
+    # p5 = symbolic_vector_3d('p5')
+
+    points = (p1, p2, p3, p4, p5)
+    bases = bezier_bases(4, t)
+    p = make_bezier_expr(points, bases)(t)
+
+    common, exprs = cse(p, numbered_symbols('a'))
+
+    print_code(common, exprs)
+
+    # points_d = get_curve_point_deltas(points, 4)
+    # bases_d = bezier_bases(3, t)
+    # pd = make_bezier_expr(points_d, bases_d)
+
 
 def diagonal_of_quadratic_patch():
+    ''' 
+    We get a quartic result for the naive case
+
+    Instead, we should be looking for Casteljau
+    algorithm constructions. Geometry.
+
+    We should be able to take this thing, and
+    factor out more elementary curves again.
+
+    We can't ignore any control points.
+
+    For an non-basis straight-line in uv space,
+    the resulting curve on the surface will also
+    be a quartic of this type, right?
+
+    Take a Lillian/Belochian approach to splitting
+    the quartic up into lesser-degree components.
+    Emminently possible, right?
+
+    We can:
+        - find these
+        - draw them directly.
+        - represent them with piece-wise lower-degree
+
+    Let's try this:
+
+    Given two identified silhouette point, which we
+    find through modest means, find the quartic
+    curve that runs through them.
+
+    That *should* be our silhouette, if our assumptions
+    hold.
+
+    No more root finding needed to do only that.
+
+    Can we find all possible silhouette curves this way?
+    No, we already found that we'd at least need to 
+    check along the diagonals too, given some patch
+    shapes. But for our concave, uniform patches it
+    should work!
+
+    --
+
+    Note that the quartic is still technically
+    part of the quadratic surface.
+
+    Queries for points, tangents, normals, they
+    can all be evaluated using the patch
+
+    --
+
+    Todo first:
+
+    Go from parameterized surface formulate of the curve
+    (say, surface_point(t,t) for the diagonal), to a
+    single quartic curve with 5 control points.
+    '''
+
     p1 = symbolic_vector_3d('p1')
     p2 = symbolic_vector_3d('p2')
     p3 = symbolic_vector_3d('p3')
@@ -663,13 +691,51 @@ def diagonal_of_quadratic_patch():
     u, v, t = symbols('u v t')
 
     patch = patch_pos_3d(patch, u, v)
-    patch = patch.subs(v, t).subs(u, t)
+    p = patch.subs(v, t).subs(u, t)
 
-    pprint(patch)
+    # pprint(p)
 
-    ''' 
-    We get a quartic result for the naive case
-    '''
+    common, exprs = cse(p, numbered_symbols('a'))
+
+    print_code(common, exprs)
+
+def slice_of_quadratic_patch():
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    p4 = symbolic_vector_3d('p4')
+    p5 = symbolic_vector_3d('p5')
+    p6 = symbolic_vector_3d('p6')
+    p7 = symbolic_vector_3d('p7')
+    p8 = symbolic_vector_3d('p8')
+    p9 = symbolic_vector_3d('p9')
+
+    # Todo: would express with abstract symbols, but patch need linalg.
+    # Resultint polynomials are identical over [x,y,z] though
+    # p1, p2, p3, p4, p5, p6, p7, p8, p9 = symbols('p1, p2, p3, p4, p5, p6, p7, p8, p9')
+
+    patch = [
+        [p1, p2, p3],
+        [p4, p5, p6],
+        [p7, p8, p9]
+    ]
+
+    u, u0, u1, v, v0, v1, t = symbols('u u0 u1 v v0 v1 t')
+
+    patch = patch_pos_3d(patch, u, v)
+
+    # now re-express u,v as linear functions of single param t
+    u_func = u0 * (1-t) + u1 * t
+    v_func = v0 * (1-t) + v1 * t
+
+    p = patch.subs(u, u_func).subs(v, v_func)
+
+    common, exprs = cse(p, numbered_symbols('a'))
+
+    for expr in exprs:
+        pprint(expr)
+
+    # print_code(common, exprs)
 
 def main():
     # inflections_3d()
@@ -691,10 +757,13 @@ def main():
     # inflections_cubic_3d()
 
     # diagonal_of_linear_patch()
-    diagonal_of_quadratic_patch()
+    # diagonal_of_quadratic_patch()
+    slice_of_quadratic_patch()
     
     # ballistics()
     # ballistics_bezier()
+
+    # bezier_quartic()
 
 
 if __name__ == "__main__":
