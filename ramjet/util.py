@@ -73,38 +73,53 @@ into Roslyn AST using F# or something...
 def csharp(code):
     code = ccode(code)
     code = code[1:-1]
+
     comma_idx = code.find(",")
     code = code[0:comma_idx] + " =" + code[comma_idx+1:]
-    code = code.replace("pow", "math.pow")
-    code = code.replace("sqrt", "math.sqrt")
     code = "float " + code + ";"
 
+    code = format_math_funcs(code)
     code = replace_vector_vars(code)
     code = format_floats(code)
 
     return code
 
+def format_math_funcs(code):
+    code = code.replace("pow", "math.pow")
+    code = code.replace("sqrt", "math.sqrt")
+    return code
 
 def replace_vector_vars(code):
     '''
-    Scan through string finding occurances of 'p*_*'
+    Scan through string finding occurances of 'identifier{n}_{x,y,z}'
     Replace each with 'curve[*].*'
     '''
+
+    xyz = ['x', 'y', 'z']
+
     pos = 0
     while True:
-        pos = code.find('p', pos)
+        pos = code.find('_', pos)
         if pos == -1:
             break
 
-        if code[pos+2] == '_':
-
-            idx = int(code[pos+1])
+        if code[pos+1] in xyz:
+            idx = int(code[pos-1])
             idx -= 1
-            code = code[0:pos] + "curve[" + str(idx) + "]." + code[pos+3:]
+
+            name_start = find_identifier_backwards_from(code, pos-2)
+            name = code[name_start:pos-1]
+
+            code = code[0:name_start] + name + "[" + str(idx) + "]." + code[pos+1:]
         else:
             pos += 1
     return code
 
+def find_identifier_backwards_from(code, end):
+    for i in range(end, -1, -1):
+        if not code[i].isalpha():
+            return i+1
+    return 0
 
 def format_floats(code):
     '''

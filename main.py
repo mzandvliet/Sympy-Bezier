@@ -544,8 +544,8 @@ def silhouette_quadratic_projected_2d():
     p = make_bezier_expr(points, bases)(u)
 
     patch_n = [
-        [symbolic_vector_3d('n1'), symbolic_vector_3d('n2')],
-        [symbolic_vector_3d('n2'), symbolic_vector_3d('n3')],
+        [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
+        [symbolic_vector_3d('normal2'), symbolic_vector_3d('normal3')],
     ]
     normal = patch_3d(patch_n, u, v)
     normal[2] = 0
@@ -566,24 +566,9 @@ def silhouette_quadratic_projected_2d():
     poly = to_polynomial(solution, u)
     print("Got polynomial of degree: " + str(poly.degree()))
 
-    # for (i, t) in enumerate(poly.all_coeffs()):
-    #     print("u^%i:"%(3-i))
-    #     pprint(t)
-
-    # common, exprs = cse(poly.all_coeffs(), numbered_symbols('a'))
-    # for (i, t) in enumerate(common):
-    #     print("term: " + str(i))
-    #     pprint(t)
-
-    # for (i, t) in enumerate(exprs):
-    #     print("expr: " + str(i))
-    #     pprint(t)
-
-    # solution = solveset(solution, t)
-    # common, exprs = cse(solution, numbered_symbols('a'))
-    # print_code(common, exprs)
-
-    # Degree 3 now
+    solution = solveset(solution, u)
+    common, exprs = cse(solution, numbered_symbols('a'))
+    print_code(common, exprs)
 
 
 '''
