@@ -536,29 +536,48 @@ def silhouette_quadratic_projected_2d():
     ]
     patch[0][0] = Matrix([0,0,0])
     patch[0][1][2] = 0
+    patch[0][2][1] = 0
     patch[0][2][2] = 0
-
-    patch_d = [
-        [[3 * (patch[0][1] - patch[1][1]), 3 * (patch[0][1] - patch[0][2])], [3 * (patch[2][1] - patch[1][1]), 3 * (patch[1][2] - patch[1][1])]],
-        [[3 * (patch[1][0] - patch[0][0]), 3 * (patch[0][1] - patch[0][0])], [3 * (patch[2][0] - patch[1][0]), 3 * (patch[1][1] - patch[1][0])]],
-    ]
 
     bases = bezier_bases(2, u)
     points = (patch[0][0], patch[0][1], patch[0][2])
     p = make_bezier_expr(points, bases)(u)
 
-    normal = quadratic_patch_normal_3d(patch_d, u, v)
+    patch_n = [
+        [symbolic_vector_3d('n1'), symbolic_vector_3d('n2')],
+        [symbolic_vector_3d('n2'), symbolic_vector_3d('n3')],
+    ]
+    normal = patch_3d(patch_n, u, v)
     normal[2] = 0
-    pprint(normal[2])
 
-    viewdir = p - view_point
+    patch_viewdir = [
+        [symbolic_vector_3d('viewdir1'), symbolic_vector_3d('viewdir2')],
+        [symbolic_vector_3d('viewdir2'), symbolic_vector_3d('viewdir3')],
+    ]
+    viewdir = patch_3d(patch_viewdir, u, v)
+    viewdir[2] = 0
+
+    # viewdir = p - view_point
+    viewdir[2] = 0
     solution = viewdir.dot(normal)
 
-    solution = expand(solution)
-    # pprint(solution)
+    pprint(solution)
 
     poly = to_polynomial(solution, u)
     print("Got polynomial of degree: " + str(poly.degree()))
+
+    # for (i, t) in enumerate(poly.all_coeffs()):
+    #     print("u^%i:"%(3-i))
+    #     pprint(t)
+
+    # common, exprs = cse(poly.all_coeffs(), numbered_symbols('a'))
+    # for (i, t) in enumerate(common):
+    #     print("term: " + str(i))
+    #     pprint(t)
+
+    # for (i, t) in enumerate(exprs):
+    #     print("expr: " + str(i))
+    #     pprint(t)
 
     # solution = solveset(solution, t)
     # common, exprs = cse(solution, numbered_symbols('a'))
@@ -595,7 +614,7 @@ def silhouette_quadratic_patch_3d():
         [[3 * (patch[1][0] - patch[0][0]), 3 * (patch[0][1] - patch[0][0])], [3 * (patch[2][0] - patch[1][0]), 3 * (patch[1][1] - patch[1][0])]],
     ]
 
-    pos = quadratic_patch_pos_3d(patch, u, v)
+    pos = quadratic_patch_3d(patch, u, v)
     normal = quadratic_patch_normal_3d(patch_d, u, v)
     viewdir = pos - view_point
     dot = viewdir.dot(normal)
@@ -660,7 +679,7 @@ def diagonal_of_linear_patch():
 
     u, v, t = symbols('u v t')
 
-    patch = patch_pos_3d(patch, u, v)
+    patch = patch_3d(patch, u, v)
 
     patch.subs(p2, p2 - p1).subs(p3, p3 - p1)
     patch = patch.subs(v, t).subs(u, t)
@@ -766,7 +785,7 @@ def diagonal_of_quadratic_patch():
 
     u, v, t = symbols('u v t')
 
-    patch = patch_pos_3d(patch, u, v)
+    patch = patch_3d(patch, u, v)
     p = patch.subs(v, t).subs(u, t)
 
     # pprint(p)
@@ -787,7 +806,7 @@ def slice_of_quadratic_patch():
     p9 = symbolic_vector_3d('p9')
 
     # Todo: would express with abstract symbols, but patch need linalg.
-    # Resultint polynomials are identical over [x,y,z] though
+    # Resulting polynomials are identical over [x,y,z] though
     # p1, p2, p3, p4, p5, p6, p7, p8, p9 = symbols('p1, p2, p3, p4, p5, p6, p7, p8, p9')
 
     patch = [
@@ -798,7 +817,7 @@ def slice_of_quadratic_patch():
 
     u, u0, u1, v, v0, v1, t = symbols('u u0 u1 v v0 v1 t')
 
-    patch = patch_pos_3d(patch, u, v)
+    patch = patch_3d(patch, u, v)
 
     # now re-express u,v as linear functions of single param t
     u_func = u0 * (1-t) + u1 * t
