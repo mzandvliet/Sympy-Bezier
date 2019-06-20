@@ -512,38 +512,51 @@ def silhouette_quadratic_projected_2d():
     In this SymPy formulation, we can assume that we recieved
     a 4-point delta patch, already aligned to 2d plane
 
+    --
+
+    Todo:
+
+    Figured out that you can cache your surface normals in yet another bezier patch of 1 degree lower than your surface
+
+    So we can actually get rid of the cross product here
+    This will yield a quadratic solve at the end :D
+
     '''
 
     u, v = symbols('u v')
+    v = 0
 
     view_point = symbolic_vector_3d('viewPoint')
+    view_point[2] = 0
 
-    p1 = symbolic_vector_3d('p1')
-    p2 = symbolic_vector_3d('p2')
-    p3 = symbolic_vector_3d('p3')
-    p1 = Matrix([0,0,0])
-    p2[2] = 0
-    p3[2] = 0
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')],
+    ]
+    patch[0][0] = Matrix([0,0,0])
+    patch[0][1][2] = 0
+    patch[0][2][2] = 0
 
-    # pd1 = 3 * (p2 - p1) etc
     patch_d = [
-        [[symbolic_vector_3d('pd1_u'), symbolic_vector_3d('pd1_v')], [symbolic_vector_3d('pd2_u'), symbolic_vector_3d('pd2_v')]],
-        [[symbolic_vector_3d('pd3_u'), symbolic_vector_3d('pd3_v')], [symbolic_vector_3d('pd4_u'), symbolic_vector_3d('pd4_v')]],
+        [[3 * (patch[0][1] - patch[1][1]), 3 * (patch[0][1] - patch[0][2])], [3 * (patch[2][1] - patch[1][1]), 3 * (patch[1][2] - patch[1][1])]],
+        [[3 * (patch[1][0] - patch[0][0]), 3 * (patch[0][1] - patch[0][0])], [3 * (patch[2][0] - patch[1][0]), 3 * (patch[1][1] - patch[1][0])]],
     ]
 
-    # Note: using only edge pd1, pd2 right now, instead of full delta patch, for normal
-
     bases = bezier_bases(2, u)
-    points = (p1, p2, p3)
+    points = (patch[0][0], patch[0][1], patch[0][2])
     p = make_bezier_expr(points, bases)(u)
 
     normal = quadratic_patch_normal_3d(patch_d, u, v)
+    normal[2] = 0
+    pprint(normal[2])
+
     viewdir = p - view_point
     solution = viewdir.dot(normal)
 
-    pprint(solution)
-
     solution = expand(solution)
+    # pprint(solution)
+
     poly = to_polynomial(solution, u)
     print("Got polynomial of degree: " + str(poly.degree()))
 
@@ -551,7 +564,7 @@ def silhouette_quadratic_projected_2d():
     # common, exprs = cse(solution, numbered_symbols('a'))
     # print_code(common, exprs)
 
-    # Ok, we're not there yet. This is getting us a quartic thing to solve, which is no good.
+    # Degree 3 now
 
 
 '''
