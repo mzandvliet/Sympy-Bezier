@@ -457,7 +457,6 @@ def silhouette_quadratic_2d():
     t = symbols('t')
 
     view_point = symbolic_vector_2d('viewPoint')
-    # view_point = Matrix([0,0])
 
     p1 = symbolic_vector_2d('p1')
     p2 = symbolic_vector_2d('p2')
@@ -485,6 +484,43 @@ def silhouette_quadratic_2d():
 
     poly = to_polynomial(solution, t)
     print("Got polynomial of degree: " + str(poly.degree()))
+
+    solution = solveset(solution, t)
+    common, exprs = cse(solution, numbered_symbols('a'))
+    print_code(common, exprs)
+
+
+def silhouette_quadratic_2d_gradient():
+    t = symbols('t')
+
+    view_point = symbolic_vector_2d('viewPoint')
+
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+
+    pd1 = 3 * (p2 - p1)
+    pd2 = 3 * (p3 - p2)
+
+    bases = bezier_bases(2, t)
+    bases_d = bezier_bases(1, t)
+
+    points = (p1, p2, p3)
+    points_d = (pd1, pd2)
+
+    p = make_bezier_expr(points, bases)(t)
+    pd = make_bezier_expr(points_d, bases_d)(t)
+
+    normal = Matrix([-pd[1], pd[0]])
+    viewdir = p - view_point
+
+    solution = viewdir.dot(normal)
+    solution = expand(solution)
+
+    poly = to_polynomial(solution, t)
+    print("Got polynomial of degree: " + str(poly.degree()))
+
+    solution = diff(solution, t)
 
     solution = solveset(solution, t)
     common, exprs = cse(solution, numbered_symbols('a'))
@@ -526,9 +562,6 @@ def silhouette_quadratic_projected_2d():
     u, v = symbols('u v')
     v = 0
 
-    view_point = symbolic_vector_3d('viewPoint')
-    view_point[2] = 0
-
     patch = [
         [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
         [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
@@ -550,26 +583,71 @@ def silhouette_quadratic_projected_2d():
     normal = patch_3d(patch_n, u, v)
     normal[2] = 0
 
-    patch_viewdir = [
-        [symbolic_vector_3d('viewdir1'), symbolic_vector_3d('viewdir2')],
-        [symbolic_vector_3d('viewdir2'), symbolic_vector_3d('viewdir3')],
-    ]
-    viewdir = patch_3d(patch_viewdir, u, v)
+    # patch_viewdir = [
+    #     [symbolic_vector_3d('viewdir1'), symbolic_vector_3d('viewdir2'), symbolic_vector_3d('viewdir3')],
+    #     [symbolic_vector_3d('viewdir4'), symbolic_vector_3d('viewdir5'), symbolic_vector_3d('viewdir6')],
+    #     [symbolic_vector_3d('viewdir7'), symbolic_vector_3d('viewdir8'), symbolic_vector_3d('viewdir9')],
+    # ]
+    # viewdir = patch_3d(patch_viewdir, u, v)
+    # viewdir[2] = 0
+
+    viewpos = symbolic_vector_3d('viewpos')
+    viewdir = p - viewpos
     viewdir[2] = 0
 
-    # viewdir = p - view_point
-    viewdir[2] = 0
     solution = viewdir.dot(normal)
 
     pprint(solution)
 
-    poly = to_polynomial(solution, u)
-    print("Got polynomial of degree: " + str(poly.degree()))
+    '''
+    Let's see. We now have dot(bezier, bezier)
+    bezier * bezier + bezier * bezier
+    '''
 
-    solution = solveset(solution, u)
-    common, exprs = cse(solution, numbered_symbols('a'))
+    # pprint(solution)
+
+    # poly = to_polynomial(solution, u)
+    # print("Got polynomial of degree: " + str(poly.degree()))
+
+    # solution = solveset(solution, u)
+
+    # common, exprs = cse(solution, numbered_symbols('a'))
+    # print_code(common, exprs)
+
+
+def silhouette_quadratic_3d_gradient():
+    u, v = symbols('u v')
+
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+   
+    pos = quadratic_patch_3d(patch, u, v)
+
+    patch_n = [
+        [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
+        [symbolic_vector_3d('normal2'), symbolic_vector_3d('normal3')],
+    ]
+    normal = patch_3d(patch_n, u, v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewdir = pos - viewpos
+
+    solution = viewdir.dot(normal)
+
+    partial_u = diff(solution, u)
+    partial_v = diff(solution, v)
+
+    # print("partials u:")
+    # pprint(partial_u)
+
+    # print("partials v:")
+    # pprint(partial_v)
+
+    common, exprs = cse((partial_u, partial_v), numbered_symbols('a'))
     print_code(common, exprs)
-
 
 '''
 Didn't really get anywhere with this, other than realize I needed
@@ -818,16 +896,12 @@ def slice_of_quadratic_patch():
     # print_code(common, exprs)
 
 def main():
-    # inflections_3d()
-    # curvature_maxima_3d()    
-    # height_maxima_3d()
-
-    # silhouette_cubic_2d()
-    # silhouette_quadratic_2d()
-    # silhouette_quadratic_patch_3d()
-    silhouette_quadratic_projected_2d()
+    # === Evaluating Curves & Surfaces ===
 
     # quadratic_2d_bezier()
+    # bezier_quartic()
+
+    # === Curvature min/max, inflectons ===
 
     # maxima_1st_cubic_2d()
     # maxima_2nd_cubic_2d()
@@ -835,16 +909,29 @@ def main():
     # inflections_deriv_cubic_2d()
     # curvature_maxima_cubic_2d()
 
+    # inflections_3d()
     # inflections_cubic_3d()
+    # curvature_maxima_3d()    
+
+    # === Silhouette finding ===
+
+    # silhouette_cubic_2d()
+    # silhouette_quadratic_2d()
+    silhouette_quadratic_2d_gradient()
+    # silhouette_quadratic_patch_3d()
+    # silhouette_quadratic_projected_2d()
+    # silhouette_quadratic_3d_gradient()
+
+    # === Curves defined on (or embedded within) surfaces
 
     # diagonal_of_linear_patch()
     # diagonal_of_quadratic_patch()
     # slice_of_quadratic_patch()
     
+    # Kinematics
+
     # ballistics()
     # ballistics_bezier()
-
-    # bezier_quartic()
 
 
 if __name__ == "__main__":

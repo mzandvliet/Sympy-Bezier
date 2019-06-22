@@ -43,22 +43,22 @@ def print_pretty(common, exprs):
     for t in common:
         pprint(t)
 
-    print("\n----------------roots-------------------\n")
+    print("\n--------------solutions----------------\n")
 
     for expr in exprs:
         pprint(expr)
 
 
 def print_code(common, exprs):
-    print("\n----------------terms-------------------\n")
+    print("\n/*----------------terms-------------------*/\n")
 
     for t in common:
         print(csharp(t))
 
-    print("\n----------------roots-------------------\n")
+    print("\n/*--------------solutions------------------*/\n")
 
     for i, expr in enumerate(exprs):
-        print("float root_%d = " % i + replace_vector_vars(ccode(expr)) + ";")
+        print("float output_%d = " % i + replace_vector_vars(ccode(expr)) + ";")
 
 
 '''
@@ -103,7 +103,7 @@ def replace_vector_vars(code):
         if pos == -1:
             break
 
-        if code[pos+1] in xyz:
+        if code[pos+1] in xyz and code[pos-1].isdigit():
             idx = int(code[pos-1])
             idx -= 1
 
