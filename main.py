@@ -499,8 +499,8 @@ def silhouette_quadratic_2d_gradient():
     p2 = symbolic_vector_2d('p2')
     p3 = symbolic_vector_2d('p3')
 
-    pd1 = 3 * (p2 - p1)
-    pd2 = 3 * (p3 - p2)
+    pd1 = 2 * (p2 - p1)
+    pd2 = 2 * (p3 - p2)
 
     bases = bezier_bases(2, t)
     bases_d = bezier_bases(1, t)
@@ -514,15 +514,14 @@ def silhouette_quadratic_2d_gradient():
     normal = Matrix([-pd[1], pd[0]])
     viewdir = p - view_point
 
-    solution = viewdir.dot(normal)
+    solution = viewdir.dot(normal)**2
     solution = expand(solution)
 
-    poly = to_polynomial(solution, t)
-    print("Got polynomial of degree: " + str(poly.degree()))
+    # poly = to_polynomial(solution, t)
+    # print("Got polynomial of degree: " + str(poly.degree()))
 
     solution = diff(solution, t)
 
-    solution = solveset(solution, t)
     common, exprs = cse(solution, numbered_symbols('a'))
     print_code(common, exprs)
 
