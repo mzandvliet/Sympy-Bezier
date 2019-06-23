@@ -464,8 +464,8 @@ def silhouette_quadratic_2d():
 
     p1 = Matrix([0, 0])
 
-    pd1 = 3 * (p2 - p1)
-    pd2 = 3 * (p3 - p2)
+    pd1 = 2 * (p2 - p1)
+    pd2 = 2 * (p3 - p2)
 
     bases = bezier_bases(2, t)
     bases_d = bezier_bases(1, t)
@@ -499,28 +499,29 @@ def silhouette_quadratic_2d_gradient():
     p2 = symbolic_vector_2d('p2')
     p3 = symbolic_vector_2d('p3')
 
-    pd1 = 2 * (p2 - p1)
-    pd2 = 2 * (p3 - p2)
+    # pd1 = 2 * (p2 - p1)
+    # pd2 = 2 * (p3 - p2)
+    n1 = symbolic_vector_2d('n1')
+    n2 = symbolic_vector_2d('n2')
 
-    bases = bezier_bases(2, t)
-    bases_d = bezier_bases(1, t)
+    bases_p = bezier_bases(2, t)
+    bases_n = bezier_bases(1, t)
 
     points = (p1, p2, p3)
-    points_d = (pd1, pd2)
+    normals = (n1, n2)
 
-    p = make_bezier_expr(points, bases)(t)
-    pd = make_bezier_expr(points_d, bases_d)(t)
+    p = make_bezier_expr(points, bases_p)(t)
+    n = make_bezier_expr(normals, bases_n)(t)
 
-    normal = Matrix([-pd[1], pd[0]])
     viewdir = p - view_point
 
-    solution = viewdir.dot(normal)**2
-    solution = expand(solution)
-
+    solution = viewdir.dot(n)**2
+    
     # poly = to_polynomial(solution, t)
     # print("Got polynomial of degree: " + str(poly.degree()))
 
     solution = diff(solution, t)
+    solution = simplify(solution)
 
     common, exprs = cse(solution, numbered_symbols('a'))
     print_code(common, exprs)
@@ -634,16 +635,10 @@ def silhouette_quadratic_3d_gradient():
     viewpos = symbolic_vector_3d('viewPoint')
     viewdir = pos - viewpos
 
-    solution = viewdir.dot(normal)
+    solution = viewdir.dot(normal)**2
 
     partial_u = diff(solution, u)
     partial_v = diff(solution, v)
-
-    # print("partials u:")
-    # pprint(partial_u)
-
-    # print("partials v:")
-    # pprint(partial_v)
 
     common, exprs = cse((partial_u, partial_v), numbered_symbols('a'))
     print_code(common, exprs)
@@ -916,8 +911,8 @@ def main():
 
     # silhouette_cubic_2d()
     # silhouette_quadratic_2d()
-    silhouette_quadratic_2d_gradient()
-    # silhouette_quadratic_patch_3d()
+    # silhouette_quadratic_2d_gradient()
+    silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
     # silhouette_quadratic_3d_gradient()
 
