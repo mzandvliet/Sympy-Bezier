@@ -624,23 +624,26 @@ def silhouette_quadratic_3d_gradient():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
    
-    # patch = [
-    #     [symbolic_vector_3d('p1'), symbolic_vector_3d('p4'), symbolic_vector_3d('p7')],
-    #     [symbolic_vector_3d('p2'), symbolic_vector_3d('p5'), symbolic_vector_3d('p8')],
-    #     [symbolic_vector_3d('p3'), symbolic_vector_3d('p6'), symbolic_vector_3d('p9')]
-    # ]
     pos = quadratic_patch_3d(patch, u, v)
 
     # patch_n = [
-    #     [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal3')],
-    #     [symbolic_vector_3d('normal2'), symbolic_vector_3d('normal4')],
+    #     [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
+    #     [symbolic_vector_3d('normal3'), symbolic_vector_3d('normal4')],
     # ]
+    # normal = patch_3d(patch_n, u, v)
 
-    patch_n = [
-        [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
-        [symbolic_vector_3d('normal3'), symbolic_vector_3d('normal4')],
+    tangents_u = [
+        [2 * (patch[1][0] - patch[0][0]), 2 * (patch[2][0] - patch[1][0])],
+        [2 * (patch[1][1] - patch[0][1]), 2 * (patch[2][1] - patch[1][1])]
     ]
-    normal = patch_3d(patch_n, u, v)
+    tangents_v = [
+        [2 * (patch[0][1] - patch[0][0]), 2 * (patch[1][1] - patch[1][0])],
+        [2 * (patch[0][2] - patch[0][1]), 2 * (patch[1][2] - patch[1][1])]
+    ]
+
+    tangent_u = patch_3d(tangents_u, u, v)
+    tangent_v = patch_3d(tangents_v, u, v)
+    normal = tangent_u.cross(tangent_v)
 
     viewpos = symbolic_vector_3d('viewPoint')
     viewdir = pos - viewpos
@@ -861,7 +864,15 @@ def diagonal_of_quadratic_patch():
 
     print_code(common, exprs)
 
-def slice_of_quadratic_patch():
+def geodesic_on_quadratic_patch():
+    '''
+    Yield a quartic curve that spans between two
+    points on the surface defined in uv space
+
+    In uv space itself, the line is a linear combination,
+    i.e. a first order bezier curve.
+    '''
+
     p1 = symbolic_vector_3d('p1')
     p2 = symbolic_vector_3d('p2')
     p3 = symbolic_vector_3d('p3')
@@ -882,21 +893,70 @@ def slice_of_quadratic_patch():
         [p7, p8, p9]
     ]
 
-    u, u0, u1, v, v0, v1, t = symbols('u u0 u1 v v0 v1 t')
+    u, v, t = symbols('u v t')
 
     patch = patch_3d(patch, u, v)
 
     # now re-express u,v as linear functions of single param t
-    u_func = u0 * (1-t) + u1 * t
-    v_func = v0 * (1-t) + v1 * t
+    uv1 = symbolic_vector_2d('uv1')
+    uv2 = symbolic_vector_2d('uv2')
+    bases_uv = bezier_bases(1, t)
+    uv = make_bezier_expr((uv1, uv2), bases_uv)(t)
 
-    p = patch.subs(u, u_func).subs(v, v_func)
+    p = patch.subs(u, uv[0]).subs(v, uv[1])
 
     common, exprs = cse(p, numbered_symbols('a'))
 
     for expr in exprs:
         pprint(expr)
 
+    # print_code(common, exprs)
+
+def quadratic_curve_on_quadratic_patch():
+    '''
+    As of 23-06-19, this looks like the fullest description for a
+    full silhouette curve on a quadratic patch.
+
+    It's an 8th degree polynomial... Hoo boy.
+
+    Of course, there's clever ways to evaluate it. It's just that
+    these babies might get unwieldy?
+    '''
+
+    u, v, t = symbols('u v t')
+
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    p4 = symbolic_vector_3d('p4')
+    p5 = symbolic_vector_3d('p5')
+    p6 = symbolic_vector_3d('p6')
+    p7 = symbolic_vector_3d('p7')
+    p8 = symbolic_vector_3d('p8')
+    p9 = symbolic_vector_3d('p9')
+
+    patch = [
+        [p1, p2, p3],
+        [p4, p5, p6],
+        [p7, p8, p9]
+    ]
+    patch = patch_3d(patch, u, v)
+    
+    uv1 = symbolic_vector_2d('uv1')
+    uv2 = symbolic_vector_2d('uv2')
+    uv3 = symbolic_vector_2d('uv3')
+
+    bases_uv = bezier_bases(2, t)
+    uv = make_bezier_expr((uv1, uv2, uv3), bases_uv)(t)
+
+    p = patch.subs(u, uv[0]).subs(v, uv[1])
+
+    # poly = to_polynomial(p[0], t)
+    # print("Got polynomial of degree: " + str(poly.degree()))
+
+    common, exprs = cse(p, numbered_symbols('a'))
+    for expr in exprs:
+        pprint(expr)
     # print_code(common, exprs)
 
 def main():
@@ -924,13 +984,14 @@ def main():
     # silhouette_quadratic_2d_gradient()
     # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
-    silhouette_quadratic_3d_gradient()
+    # silhouette_quadratic_3d_gradient()
 
     # === Curves defined on (or embedded within) surfaces
 
     # diagonal_of_linear_patch()
     # diagonal_of_quadratic_patch()
-    # slice_of_quadratic_patch()
+    # geodesic_on_quadratic_patch()
+    quadratic_curve_on_quadratic_patch()
     
     # Kinematics
 
