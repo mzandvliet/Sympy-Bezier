@@ -624,11 +624,21 @@ def silhouette_quadratic_3d_gradient():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
    
+    # patch = [
+    #     [symbolic_vector_3d('p1'), symbolic_vector_3d('p4'), symbolic_vector_3d('p7')],
+    #     [symbolic_vector_3d('p2'), symbolic_vector_3d('p5'), symbolic_vector_3d('p8')],
+    #     [symbolic_vector_3d('p3'), symbolic_vector_3d('p6'), symbolic_vector_3d('p9')]
+    # ]
     pos = quadratic_patch_3d(patch, u, v)
+
+    # patch_n = [
+    #     [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal3')],
+    #     [symbolic_vector_3d('normal2'), symbolic_vector_3d('normal4')],
+    # ]
 
     patch_n = [
         [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
-        [symbolic_vector_3d('normal2'), symbolic_vector_3d('normal3')],
+        [symbolic_vector_3d('normal3'), symbolic_vector_3d('normal4')],
     ]
     normal = patch_3d(patch_n, u, v)
 
@@ -912,9 +922,9 @@ def main():
     # silhouette_cubic_2d()
     # silhouette_quadratic_2d()
     # silhouette_quadratic_2d_gradient()
-    silhouette_quadratic_patch_3d()
+    # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
-    # silhouette_quadratic_3d_gradient()
+    silhouette_quadratic_3d_gradient()
 
     # === Curves defined on (or embedded within) surfaces
 
