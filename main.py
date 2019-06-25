@@ -529,7 +529,7 @@ def silhouette_quadratic_2d_gradient():
 def silhouette_quadratic_projected_2d():
     '''
 
-    Like above, but for an aligned slide of a 3d patch.
+    Like above, but for an aligned slice of a 3d patch.
     Edges, and middles.
 
     Can still transform to 2d plane and solve there,
@@ -614,7 +614,6 @@ def silhouette_quadratic_projected_2d():
     # common, exprs = cse(solution, numbered_symbols('a'))
     # print_code(common, exprs)
 
-
 def silhouette_quadratic_3d_gradient():
     u, v = symbols('u v')
 
@@ -624,26 +623,27 @@ def silhouette_quadratic_3d_gradient():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
    
-    pos = quadratic_patch_3d(patch, u, v)
+    pos = patch_3d(patch, u, v)
 
-    # patch_n = [
-    #     [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
-    #     [symbolic_vector_3d('normal3'), symbolic_vector_3d('normal4')],
+    # symbolic
+    patch_n = [
+        [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
+        [symbolic_vector_3d('normal3'), symbolic_vector_3d('normal4')],
+    ]
+    normal = patch_3d(patch_n, u, v)
+
+    # u-major ordering
+    # tangents_u = [
+    #     [2 * (patch[1][0] - patch[0][0]), 2 * (patch[2][0] - patch[1][0])],
+    #     [2 * (patch[1][1] - patch[0][1]), 2 * (patch[2][1] - patch[1][1])]
     # ]
-    # normal = patch_3d(patch_n, u, v)
-
-    tangents_u = [
-        [2 * (patch[1][0] - patch[0][0]), 2 * (patch[2][0] - patch[1][0])],
-        [2 * (patch[1][1] - patch[0][1]), 2 * (patch[2][1] - patch[1][1])]
-    ]
-    tangents_v = [
-        [2 * (patch[0][1] - patch[0][0]), 2 * (patch[1][1] - patch[1][0])],
-        [2 * (patch[0][2] - patch[0][1]), 2 * (patch[1][2] - patch[1][1])]
-    ]
-
-    tangent_u = patch_3d(tangents_u, u, v)
-    tangent_v = patch_3d(tangents_v, u, v)
-    normal = tangent_u.cross(tangent_v)
+    # tangents_v = [
+    #     [2 * (patch[0][1] - patch[0][0]), 2 * (patch[1][1] - patch[1][0])],
+    #     [2 * (patch[0][2] - patch[0][1]), 2 * (patch[1][2] - patch[1][1])]
+    # ]
+    # tangent_u = patch_3d(tangents_u, u, v)
+    # tangent_v = patch_3d(tangents_v, u, v)
+    # normal = tangent_u.cross(tangent_v)
 
     viewpos = symbolic_vector_3d('viewPoint')
     viewdir = pos - viewpos
@@ -655,51 +655,6 @@ def silhouette_quadratic_3d_gradient():
 
     common, exprs = cse((partial_u, partial_v), numbered_symbols('a'))
     print_code(common, exprs)
-
-'''
-Didn't really get anywhere with this, other than realize I needed
-to change my approach
-'''
-def silhouette_quadratic_patch_3d():
-    u, v = symbols('u v')
-
-    # bottom edge only
-    view_point = symbolic_vector_3d('pview')
-    # view_point = Matrix([0, 0, 0])
-
-    patch = [
-        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
-        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
-        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')],
-    ]
-
-    # patch_d = [
-    #     [[symbolic_vector_3d('q1u'), symbolic_vector_3d('q1v')], [symbolic_vector_3d('q2u'), symbolic_vector_3d('q2v')]],
-    #     [[symbolic_vector_3d('q3u'), symbolic_vector_3d('q3v')], [symbolic_vector_3d('q4u'), symbolic_vector_3d('q4v')]]
-    # ]
-
-    # todo: generate these derivative points, q, using a function
-    patch_d = [
-        [[3 * (patch[0][1] - patch[1][1]), 3 * (patch[0][1] - patch[0][2])], [3 * (patch[2][1] - patch[1][1]), 3 * (patch[1][2] - patch[1][1])]],
-        [[3 * (patch[1][0] - patch[0][0]), 3 * (patch[0][1] - patch[0][0])], [3 * (patch[2][0] - patch[1][0]), 3 * (patch[1][1] - patch[1][0])]],
-    ]
-
-    pos = quadratic_patch_3d(patch, u, v)
-    normal = quadratic_patch_normal_3d(patch_d, u, v)
-    viewdir = pos - view_point
-    dot = viewdir.dot(normal)
-    # dot = Lambda((u, v), dot)
-
-    partials_u = simplify(dot.diff(u))
-    partials_v = simplify(dot.diff(v))
-    print("=== U ===")
-    pprint(partials_u)
-    print("=== V ===")
-    pprint(partials_v)
-    
-
-    # solution = pdsolve(partials, dot)
-    # pprint(solution)
 
 def quadratic_2d_bezier():
     symbs = symbols('t, p1, p2, p3')
@@ -721,6 +676,27 @@ def quadratic_2d_bezier():
     common, exprs = cse(pd, numbered_symbols('a'))
     print("Tangent:")
     print_code(common, exprs)
+
+def quartic_bezier_3d():
+    t = symbols('t')
+
+    p1, p2, p3, p4, p5 = symbols('p1 p2 p3 p4 p5')
+    # p2 = symbolic_vector_3d('p2')
+    # p3 = symbolic_vector_3d('p3')
+    # p4 = symbolic_vector_3d('p4')
+    # p5 = symbolic_vector_3d('p5')
+
+    points = (p1, p2, p3, p4, p5)
+    bases = bezier_bases(4, t)
+    p = make_bezier_expr(points, bases)(t)
+
+    common, exprs = cse(p, numbered_symbols('a'))
+
+    print_code(common, exprs)
+
+    # points_d = get_curve_point_deltas(points, 4)
+    # bases_d = bezier_bases(3, t)
+    # pd = make_bezier_expr(points_d, bases_d)
 
 def diagonal_of_linear_patch():
     '''
@@ -755,28 +731,6 @@ def diagonal_of_linear_patch():
     patch = patch.subs(v, t).subs(u, t)
 
     pprint(patch)
-
-def bezier_quartic():
-    t = symbols('t')
-    
-    p1, p2, p3, p4, p5 = symbols('p1 p2 p3 p4 p5')
-    # p2 = symbolic_vector_3d('p2')
-    # p3 = symbolic_vector_3d('p3')
-    # p4 = symbolic_vector_3d('p4')
-    # p5 = symbolic_vector_3d('p5')
-
-    points = (p1, p2, p3, p4, p5)
-    bases = bezier_bases(4, t)
-    p = make_bezier_expr(points, bases)(t)
-
-    common, exprs = cse(p, numbered_symbols('a'))
-
-    print_code(common, exprs)
-
-    # points_d = get_curve_point_deltas(points, 4)
-    # bases_d = bezier_bases(3, t)
-    # pd = make_bezier_expr(points_d, bases_d)
-
 
 def diagonal_of_quadratic_patch():
     ''' 
@@ -955,9 +909,7 @@ def quadratic_curve_on_quadratic_patch():
     # print("Got polynomial of degree: " + str(poly.degree()))
 
     common, exprs = cse(p, numbered_symbols('a'))
-    for expr in exprs:
-        pprint(expr)
-    # print_code(common, exprs)
+    print_code(common, exprs)
 
 def main():
     # === Evaluating Curves & Surfaces ===

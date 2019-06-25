@@ -104,36 +104,8 @@ def patch_3d(patch, u, v):
 
     pos = Matrix([0, 0, 0])
 
-    for i in range(0, degree+1):
-        for j in range(0, degree+1):
-            pos += patch[i][j] * bases_u[i] * bases_v[j]
+    for vIdx in range(0, degree+1):
+        for uIdx in range(0, degree+1):
+            pos += patch[vIdx][uIdx] * bases_u[uIdx] * bases_v[vIdx]
 
     return pos
-
-
-def quadratic_patch_3d(patch, u, v):
-    bases_u = bezier_bases(2, u)
-    bases_v = bezier_bases(2, v)
-
-    pos = Matrix([0, 0, 0])
-
-    for i in range(0, 3):
-        for j in range(0, 3):
-            pos += patch[i][j] * bases_u[i] * bases_v[j]
-
-    return pos
-
-
-def quadratic_patch_normal_3d(patch_d, u, v):
-    bases_u = bezier_bases(1, u)
-    bases_v = bezier_bases(1, v)
-
-    normal = Matrix([0, 0, 0])
-
-    for i in range(0, 2):
-        for j in range(0, 2):
-            tangents = patch_d[i][j]
-            normal += tangents[0].cross(tangents[1]) * \
-                (bases_u[i] * bases_v[j])
-
-    return normal
