@@ -968,20 +968,26 @@ def prove_patch_derives():
     pos_du = patch_3d(patch_du, u, v)
     pos_dv = patch_3d(patch_dv, u, v)
 
-    normal = pos_du.cross(pos_dv)
+    normals_a = pos_du.cross(pos_dv)
 
-    print(normal)
+    print("Normals A:\n")
+    print(normals_a)
+
+    tangent_u = diff(pos, u)
+    tangent_v = diff(pos, v)
+    normals_b = tangent_u.cross(tangent_v)
+
+    print("Normals B:\n")
+    print(normals_b)
 
     '''
     Todo:
 
-    Compare the above result with:
-    
-    - variant where you differentiate all patch
-    bersteins individually, and use the original patch points
-
-    - variant where you cache normals first
+    Compare the above resulting formulas, figure
+    out why the delta-point formulation is turning
+    out different from the full definition.
     '''
+
 
 def differentiate_patch(patch):
     '''
@@ -1011,7 +1017,7 @@ def main():
 
     # quadratic_2d_bezier()
     # bezier_quartic()
-    # quadratic_patch_3d_normals()
+    quadratic_patch_3d_normals()
     prove_patch_derives()
 
     # === Curvature min/max, inflectons ===
