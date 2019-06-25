@@ -5,6 +5,10 @@ from functools import reduce
 from ramjet.math import *
 from ramjet.util import *
 
+'''
+Todo: less messy linear algebra
+'''
+
 # Assume a given cubic curve starts at [0,0] and ends at [x,0]
 # leads to x1, y1, y2 = 0
 def to_oriented_curve_2d(expr):
@@ -665,6 +669,26 @@ def silhouette_quadratic_3d_gradient():
     common, exprs = cse((partial_u, partial_v), numbered_symbols('a'))
     print_code(common, exprs)
 
+
+def quadratic_patch_3d_normals():
+    u, v = symbols('u v')
+
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+
+    pos = patch_3d(patch, u, v)
+
+    tangent_u = diff(pos, u)
+    tangent_v = diff(pos, v)
+
+    normal = tangent_u.cross(tangent_v)
+
+    common, exprs = cse(normal, numbered_symbols('a'))
+    print_code(common, exprs)
+
 def quadratic_2d_bezier():
     symbs = symbols('t, p1, p2, p3')
     t, p1, p2, p3 = symbs
@@ -920,11 +944,75 @@ def quadratic_curve_on_quadratic_patch():
     common, exprs = cse(p, numbered_symbols('a'))
     print_code(common, exprs)
 
+def prove_patch_derives():
+    u, v = symbols('u v')
+
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    p4 = symbolic_vector_3d('p4')
+    p5 = symbolic_vector_3d('p5')
+    p6 = symbolic_vector_3d('p6')
+    p7 = symbolic_vector_3d('p7')
+    p8 = symbolic_vector_3d('p8')
+    p9 = symbolic_vector_3d('p9')
+
+    patch = [
+        [p1, p2, p3],
+        [p4, p5, p6],
+        [p7, p8, p9]
+    ]
+    pos = patch_3d(patch, u, v)
+
+    patch_du, patch_dv = differentiate_patch(patch)
+    pos_du = patch_3d(patch_du, u, v)
+    pos_dv = patch_3d(patch_dv, u, v)
+
+    normal = pos_du.cross(pos_dv)
+
+    print(normal)
+
+    '''
+    Todo:
+
+    Compare the above result with:
+    
+    - variant where you differentiate all patch
+    bersteins individually, and use the original patch points
+
+    - variant where you cache normals first
+    '''
+
+def differentiate_patch(patch):
+    '''
+    Todo: this calculates point deltas only,
+    but could actually return the full patch
+    derivative formulate, just zip with bersteins
+    '''
+    
+    patch_du = []
+    patch_dv = []
+
+    patch_degree = len(patch[0])-1
+    for v in range(0, patch_degree):
+        du = []
+        dv = []
+        for u in range(0, patch_degree):
+            du.append((patch_degree-1) * (patch[v][u+1] - patch[v][u]))
+            dv.append((patch_degree-1) * (patch[v+1][u] - patch[v][u]))
+
+        patch_du.append(du)
+        patch_dv.append(dv)
+    
+    return (patch_du, patch_dv)
+
 def main():
     # === Evaluating Curves & Surfaces ===
 
     # quadratic_2d_bezier()
     # bezier_quartic()
+    # quadratic_patch_3d_normals()
+    prove_patch_derives()
 
     # === Curvature min/max, inflectons ===
 
@@ -945,7 +1033,7 @@ def main():
     # silhouette_quadratic_2d_gradient()
     # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
-    silhouette_quadratic_3d_gradient()
+    # silhouette_quadratic_3d_gradient()
 
     # === Curves defined on (or embedded within) surfaces
 
