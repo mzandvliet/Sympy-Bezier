@@ -626,11 +626,11 @@ def silhouette_quadratic_3d_gradient():
     pos = patch_3d(patch, u, v)
 
     # symbolic
-    patch_n = [
-        [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
-        [symbolic_vector_3d('normal3'), symbolic_vector_3d('normal4')],
-    ]
-    normal = patch_3d(patch_n, u, v)
+    # patch_n = [
+    #     [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
+    #     [symbolic_vector_3d('normal3'), symbolic_vector_3d('normal4')],
+    # ]
+    # normal = patch_3d(patch_n, u, v)
 
     # u-major ordering
     # tangents_u = [
@@ -641,9 +641,18 @@ def silhouette_quadratic_3d_gradient():
     #     [2 * (patch[0][1] - patch[0][0]), 2 * (patch[1][1] - patch[1][0])],
     #     [2 * (patch[0][2] - patch[0][1]), 2 * (patch[1][2] - patch[1][1])]
     # ]
-    # tangent_u = patch_3d(tangents_u, u, v)
-    # tangent_v = patch_3d(tangents_v, u, v)
-    # normal = tangent_u.cross(tangent_v)
+    # note patch[v,u], because perversely, that's how row-major layout indexing works now.
+    tangents_u = [
+        [2 * (patch[0][1] - patch[0][0]), 2 * (patch[0][2] - patch[0][1])],
+        [2 * (patch[1][1] - patch[1][0]), 2 * (patch[1][2] - patch[1][1])]
+    ]
+    tangents_v = [
+        [2 * (patch[1][0] - patch[0][0]), 2 * (patch[1][1] - patch[0][1])],
+        [2 * (patch[2][0] - patch[1][0]), 2 * (patch[2][1] - patch[1][1])]
+    ]
+    tangent_u = patch_3d(tangents_u, u, v)
+    tangent_v = patch_3d(tangents_v, u, v)
+    normal = tangent_u.cross(tangent_v)
 
     viewpos = symbolic_vector_3d('viewPoint')
     viewdir = pos - viewpos
@@ -936,14 +945,14 @@ def main():
     # silhouette_quadratic_2d_gradient()
     # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
-    # silhouette_quadratic_3d_gradient()
+    silhouette_quadratic_3d_gradient()
 
     # === Curves defined on (or embedded within) surfaces
 
     # diagonal_of_linear_patch()
     # diagonal_of_quadratic_patch()
     # geodesic_on_quadratic_patch()
-    quadratic_curve_on_quadratic_patch()
+    # quadratic_curve_on_quadratic_patch()
     
     # Kinematics
 
