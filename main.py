@@ -710,6 +710,49 @@ def silhouette_quadratic_3d_edge():
     # common, exprs = cse(solution, numbered_symbols('a'))
     # print_code(common, exprs)
 
+def silhouette_quadratic_3d_homogeneous_edge():
+    u, v = symbols('u v')
+
+    patch = [
+        [symbolic_vector_4d('p1'), symbolic_vector_4d('p2'), symbolic_vector_4d('p3')],
+        [symbolic_vector_4d('p4'), symbolic_vector_4d('p5'), symbolic_vector_4d('p6')],
+        [symbolic_vector_4d('p7'), symbolic_vector_4d('p8'), symbolic_vector_4d('p9')]
+    ]
+
+    pos = make_patch(patch, u, v)
+ 
+    patch_du = [
+        [symbolic_vector_4d('du1'), symbolic_vector_4d('du2')],
+        [symbolic_vector_4d('du3'), symbolic_vector_4d('du4')],
+        [symbolic_vector_4d('du5'), symbolic_vector_4d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_4d('dv1'), symbolic_vector_4d('dv2')],
+        [symbolic_vector_4d('dv3'), symbolic_vector_4d('dv4')],
+        [symbolic_vector_4d('dv5'), symbolic_vector_4d('dv6')]
+    ]
+    # patch_du = differentiate_patch_points_u(patch)
+    # patch_dv = differentiate_patch_points_v(patch)
+
+    tangents_u_hom = make_patch(patch_du, u, v)
+    tangents_v_hom = make_patch(patch_dv, u, v)
+
+    tangents_u = Matrix((tangents_u_hom / tangents_u_hom[3])[0:3])
+    tangents_v = Matrix((tangents_v_hom / tangents_v_hom[3])[0:3])
+
+    normal = tangents_u.cross(tangents_v)
+
+    # print(tangents_u[0])
+
+    # viewdir = pos
+
+    solution = Eq(normal[2], 0)
+    solution = solution.subs(v, 0)
+    solution = solve(solution, u)
+
+    common, exprs = cse(solution, numbered_symbols('a'))
+    print_code(common, exprs)
+
 def quadratic_patch_3d_normals():
     u, v = symbols('u v')
 
@@ -1031,7 +1074,8 @@ def main():
     # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
     # silhouette_quadratic_3d_gradient()
-    silhouette_quadratic_3d_edge()
+    # silhouette_quadratic_3d_edge()
+    silhouette_quadratic_3d_homogeneous_edge()
 
     # === Curves defined on (or embedded within) surfaces
 

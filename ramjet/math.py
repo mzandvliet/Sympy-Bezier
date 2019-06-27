@@ -53,6 +53,14 @@ def symbolic_vector_3d(name):
     return Matrix([x, y, z])
 
 
+def symbolic_vector_4d(name):
+    bases = ('x', 'y', 'z', 'w')
+    bases = map(lambda c: name + "_" + c + ", ", bases)
+    bases = reduce(lambda a, b: a + b, bases)
+    x, y, z, w = symbols(bases)
+    return Matrix([x, y, z, w])
+
+
 def dot_2d(p1, p2):
     return p1[0] * p2[0] + p1[1] * p2[1]
 
@@ -149,12 +157,14 @@ def make_patch(patch, u, v):
     samples a position along the given surface. Arbitrary degree.
     '''
 
+    dimensions = patch[0][0].shape[0] # Get point dimensions
+
     degree_u = len(patch[0])-1
     degree_v = len(patch)-1
     bases_u = bezier_bases(degree_u, u)
     bases_v = bezier_bases(degree_v, v)
 
-    pos = Matrix([0, 0, 0])
+    pos = Matrix([0]*dimensions)
 
     for vIdx in range(0, degree_v+1):
         for uIdx in range(0, degree_u+1):
