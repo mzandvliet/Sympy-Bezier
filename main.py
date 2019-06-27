@@ -627,10 +627,22 @@ def silhouette_quadratic_3d_gradient():
     ]
    
     pos = make_patch(patch, u, v)
+
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2')],
+        [symbolic_vector_3d('dv3'), symbolic_vector_3d('dv4')],
+        [symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
  
-    tangent_u = diff(pos, u)
-    tangent_v = diff(pos, v)
-    normal = tangent_u.cross(tangent_v)
+    tangents_u = make_patch(patch_du, u, v)
+    tangents_v = make_patch(patch_dv, u, v)
+
+    normal = tangents_u.cross(tangents_v)
 
     viewpos = symbolic_vector_3d('viewPoint')
     viewdir = pos - viewpos
@@ -654,9 +666,20 @@ def silhouette_quadratic_3d_edge():
    
     pos = make_patch(patch, u, v)
  
-    tangent_u = diff(pos, u)
-    tangent_v = diff(pos, v)
-    normal = tangent_u.cross(tangent_v)
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2')],
+        [symbolic_vector_3d('dv3'), symbolic_vector_3d('dv4')],
+        [symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
+
+    tangents_u = make_patch(patch_du, u, v)
+    tangents_v = make_patch(patch_dv, u, v)
+    normal = tangents_u.cross(tangents_v)
 
     viewpos = symbolic_vector_3d('viewPoint')
     viewdir = pos - viewpos
@@ -665,12 +688,12 @@ def silhouette_quadratic_3d_edge():
     solution.subs(v, 0)
     # solution = solve(solution, u)
 
-    common, exprs = cse(solution, numbered_symbols('a'))
-    for (i,t) in enumerate(common):
-        print("%i, %s"%(i, t))
+    # common, exprs = cse(solution, numbered_symbols('a'))
+    # for (i,t) in enumerate(common):
+    #     print("%i, %s"%(i, t))
 
-    for (i, t) in enumerate(exprs):
-        print("%i, %s" % (i, t))
+    # for (i, t) in enumerate(exprs):
+    #     print("%i, %s" % (i, t))
     
     # common, exprs = cse(solution, numbered_symbols('a'))
     # print_code(common, exprs)
@@ -690,8 +713,10 @@ def quadratic_patch_3d_normals():
     tangent_v = diff(pos, v)
     normal = tangent_u.cross(tangent_v)
 
-    common, exprs = cse(normal, numbered_symbols('a'))
-    print_code(common, exprs)
+    pprint(normal[0])
+
+    # common, exprs = cse(normal, numbered_symbols('a'))
+    # print_code(common, exprs)
 
 def quadratic_2d_bezier():
     symbs = symbols('t, p1, p2, p3')
@@ -972,7 +997,7 @@ def main():
     # quadratic_patch_3d_normals()
 
     # prove_curve_derives()
-    prove_patch_derives()
+    # prove_patch_derives()
 
     # === Curvature min/max, inflectons ===
 
@@ -993,7 +1018,7 @@ def main():
     # silhouette_quadratic_2d_gradient()
     # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
-    # silhouette_quadratic_3d_gradient()
+    silhouette_quadratic_3d_gradient()
     # silhouette_quadratic_3d_edge()
 
     # === Curves defined on (or embedded within) surfaces
