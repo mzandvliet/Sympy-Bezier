@@ -1,0 +1,16 @@
+def silhouette_quadratic_3d_edge() yields this thing:
+
+(
+    (du1_x*(1 - u) + du2_x*u) * (dv1_y*(1 - u) + dv2_y*u) -
+    (du1_y*(1 - u) + du2_y*u) * (dv1_x*(1 - u) + dv2_x*u)
+) * (p1_z*(1 - u)**2 + 2*p2_z*u*(1 - u) + p3_z*u**2)
++
+(
+    -(du1_x*(1 - u) + du2_x*u) * (dv1_z*(1 - u) + dv2_z*u) +
+    (du1_z*(1 - u) + du2_z*u) * (dv1_x*(1 - u) + dv2_x*u)
+) * (p1_y*(1 - u)**2 + 2*p2_y*u*(1 - u) + p3_y*u**2)
++ 
+(
+    (du1_y*(1 - u) + du2_y*u) * (dv1_z*(1 - u) + dv2_z*u) -
+    (du1_z*(1 - u) + du2_z*u) * (dv1_y*(1 - u) + dv2_y*u)
+) * (p1_x*(1 - u)**2 + 2*p2_x*u*(1 - u) + p3_x*u**2)

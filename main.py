@@ -663,29 +663,41 @@ def silhouette_quadratic_3d_edge():
         [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
-   
+
     pos = make_patch(patch, u, v)
  
-    patch_du = [
-        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
-        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
-        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
-    ]
-    patch_dv = [
-        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2')],
-        [symbolic_vector_3d('dv3'), symbolic_vector_3d('dv4')],
-        [symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
-    ]
+    # patch_du = [
+    #     [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+    #     [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+    #     [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    # ]
+    # patch_dv = [
+    #     [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2')],
+    #     [symbolic_vector_3d('dv3'), symbolic_vector_3d('dv4')],
+    #     [symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    # ]
+    patch_du = differentiate_patch_points_u(patch)
+    patch_dv = differentiate_patch_points_v(patch)
 
     tangents_u = make_patch(patch_du, u, v)
     tangents_v = make_patch(patch_dv, u, v)
+
     normal = tangents_u.cross(tangents_v)
 
-    viewpos = symbolic_vector_3d('viewPoint')
+    # viewpos = symbolic_vector_3d('viewPoint')
+    viewpos = Matrix([0,0,0])
     viewdir = pos - viewpos
 
     solution = viewdir.dot(normal)
-    solution.subs(v, 0)
+    # solution = viewdir[0] * normal[0]
+    solution = solution.subs(v, 0)
+    solution = expand(solution)
+    print(solution)
+
+    poly = to_polynomial(solution, u)
+    print("Got polynomial of degree: %i"%poly.degree())
+    # 4th degree poly in u, so we need to find more clever workarounds
+
     # solution = solve(solution, u)
 
     # common, exprs = cse(solution, numbered_symbols('a'))
@@ -1018,8 +1030,8 @@ def main():
     # silhouette_quadratic_2d_gradient()
     # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
-    silhouette_quadratic_3d_gradient()
-    # silhouette_quadratic_3d_edge()
+    # silhouette_quadratic_3d_gradient()
+    silhouette_quadratic_3d_edge()
 
     # === Curves defined on (or embedded within) surfaces
 
