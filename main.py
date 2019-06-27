@@ -937,19 +937,20 @@ def prove_patch_derives():
     ]
     pos = make_patch(patch, u, v)
 
-    patch_du, patch_dv = differentiate_patch_points(patch)
-    tangents_u_a = make_patch(patch_du, u, v)
+    patch_du = differentiate_patch_points_u(patch)
+    tangents_u_a = make_patch_du(patch_du, u, v)
     # tangents_v_a = make_patch(patch_dv, u, v)
 
     tangents_u_b = diff(pos, u)
     # tangents_v_b = diff(pos, v)
 
-    print("\n\Tangents A:\n")
-    pprint(tangents_u_a)
+    print("\nTangents A:\n")
+    pprint(expand(tangents_u_a[0]))
     print("\nTangents B:\n")
-    pprint(tangents_u_b)
+    pprint(expand(tangents_u_b[0]))
     print("\nDifference:\n")
-    pprint(tangents_u_a - tangents_u_b)
+    difference = expand(tangents_u_a[0]) - expand(tangents_u_b[0])
+    pprint(difference)
 
 def main():
     # === Evaluating Curves & Surfaces ===

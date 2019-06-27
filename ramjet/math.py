@@ -116,6 +116,35 @@ def differentiate_patch_points(patch):
     return (patch_du, patch_dv)
 
 
+def differentiate_patch_points_u(patch):
+    patch_du = []
+
+    input_degree = len(patch[0])-1
+    for v in range(0, input_degree+1):
+        du = []
+        for u in range(0, input_degree):
+            du.append((input_degree) * (patch[v][u+1] - patch[v][u]))
+
+        patch_du.append(du)
+
+    return patch_du
+
+
+def make_patch_du(patch, u, v):
+    degree_u = len(patch[0])-1
+    degree_v = len(patch)-1
+    bases_u = bezier_bases(degree_u, u)
+    bases_v = bezier_bases(degree_v, v)
+
+
+    pos = Matrix([0, 0, 0])
+
+    for vIdx in range(0, degree_v+1):
+        for uIdx in range(0, degree_u+1):
+            pos += patch[vIdx][uIdx] * bases_u[uIdx] * bases_v[vIdx]
+
+    return pos
+
 def make_patch(patch, u, v):
     '''
     Given matrix of points and two parameters, constructs a function that
