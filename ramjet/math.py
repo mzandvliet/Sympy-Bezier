@@ -117,9 +117,9 @@ def differentiate_patch_points(patch):
 
 
 def differentiate_patch_points_u(patch):
-    patch_du = []
-
     input_degree = len(patch[0])-1
+    
+    patch_du = []
     for v in range(0, input_degree+1):
         du = []
         for u in range(0, input_degree):
@@ -130,20 +130,18 @@ def differentiate_patch_points_u(patch):
     return patch_du
 
 
-def make_patch_du(patch, u, v):
-    degree_u = len(patch[0])-1
-    degree_v = len(patch)-1
-    bases_u = bezier_bases(degree_u, u)
-    bases_v = bezier_bases(degree_v, v)
+def differentiate_patch_points_v(patch):
+    input_degree = len(patch)-1
+    
+    patch_dv = []
+    for v in range(0, input_degree):
+        dv = []
+        for u in range(0, input_degree+1):
+            dv.append((input_degree) * (patch[v+1][u] - patch[v][u]))
 
+        patch_dv.append(dv)
 
-    pos = Matrix([0, 0, 0])
-
-    for vIdx in range(0, degree_v+1):
-        for uIdx in range(0, degree_u+1):
-            pos += patch[vIdx][uIdx] * bases_u[uIdx] * bases_v[vIdx]
-
-    return pos
+    return patch_dv
 
 def make_patch(patch, u, v):
     '''
@@ -151,14 +149,15 @@ def make_patch(patch, u, v):
     samples a position along the given surface. Arbitrary degree.
     '''
 
-    degree = len(patch[0])-1
-    bases_u = bezier_bases(degree, u)
-    bases_v = bezier_bases(degree, v)
+    degree_u = len(patch[0])-1
+    degree_v = len(patch)-1
+    bases_u = bezier_bases(degree_u, u)
+    bases_v = bezier_bases(degree_v, v)
 
     pos = Matrix([0, 0, 0])
 
-    for vIdx in range(0, degree+1):
-        for uIdx in range(0, degree+1):
+    for vIdx in range(0, degree_v+1):
+        for uIdx in range(0, degree_u+1):
             pos += patch[vIdx][uIdx] * bases_u[uIdx] * bases_v[vIdx]
 
     return pos

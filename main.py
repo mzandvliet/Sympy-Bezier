@@ -938,11 +938,12 @@ def prove_patch_derives():
     pos = make_patch(patch, u, v)
 
     patch_du = differentiate_patch_points_u(patch)
-    tangents_u_a = make_patch_du(patch_du, u, v)
-    # tangents_v_a = make_patch(patch_dv, u, v)
+    patch_dv = differentiate_patch_points_v(patch)
+    tangents_u_a = make_patch(patch_du, u, v)
+    tangents_v_a = make_patch(patch_dv, u, v)
 
     tangents_u_b = diff(pos, u)
-    # tangents_v_b = diff(pos, v)
+    tangents_v_b = diff(pos, v)
 
     print("\nTangents A:\n")
     pprint(expand(tangents_u_a[0]))
@@ -950,6 +951,17 @@ def prove_patch_derives():
     pprint(expand(tangents_u_b[0]))
     print("\nDifference:\n")
     difference = expand(tangents_u_a[0]) - expand(tangents_u_b[0])
+    pprint(difference)
+
+    normals_a = tangents_u_a.cross(tangents_v_a)
+    normals_b = tangents_u_b.cross(tangents_v_b)
+
+    print("\nNormals A:\n")
+    pprint(normals_a[0])
+    print("\nNormals B:\n")
+    pprint(normals_b[0])
+    print("\nDifference:\n")
+    difference = expand(normals_a[0]) - expand(normals_b[0])
     pprint(difference)
 
 def main():
