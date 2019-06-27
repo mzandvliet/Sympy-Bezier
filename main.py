@@ -120,10 +120,10 @@ def bezier_curvature_2d():
     points_y_1st = (d, e, f)
     points_y_2nd = (w, z)
 
-    bx1 = make_bezier_expr(points_x_1st, bases_1st_deriv)
-    bx2 = make_bezier_expr(points_x_2nd, bases_2nd_deriv)
-    by1 = make_bezier_expr(points_y_1st, bases_1st_deriv)
-    by2 = make_bezier_expr(points_y_2nd, bases_2nd_deriv)
+    bx1 = make_bezier(points_x_1st, bases_1st_deriv)
+    bx2 = make_bezier(points_x_2nd, bases_2nd_deriv)
+    by1 = make_bezier(points_y_1st, bases_1st_deriv)
+    by2 = make_bezier(points_y_2nd, bases_2nd_deriv)
 
     curvature = bx1(t) * by2(t) - by1(t) * bx2(t)
     result = expand(curvature)
@@ -173,12 +173,12 @@ def bezier_curvature_partials_3d():
     points_y_dd = (ydd1, ydd2)
     points_z_dd = (zdd1, zdd2)
 
-    xd = make_bezier_expr(points_x_d, bases_d)
-    yd = make_bezier_expr(points_y_d, bases_d)
-    zd = make_bezier_expr(points_z_d, bases_d)
-    xdd = make_bezier_expr(points_x_dd, bases_dd)
-    ydd = make_bezier_expr(points_y_dd, bases_dd)
-    zdd = make_bezier_expr(points_z_dd, bases_dd)
+    xd = make_bezier(points_x_d, bases_d)
+    yd = make_bezier(points_y_d, bases_d)
+    zd = make_bezier(points_z_d, bases_d)
+    xdd = make_bezier(points_x_dd, bases_dd)
+    ydd = make_bezier(points_y_dd, bases_dd)
+    zdd = make_bezier(points_z_dd, bases_dd)
 
     # this gives us 3 polys, for potentially 6 roots
 
@@ -208,9 +208,9 @@ def bezier_ddt_partials():
     points_y_dd = (ydd1, ydd2)
     points_z_dd = (zdd1, zdd2)
  
-    xdd = make_bezier_expr(points_x_dd, bases_dd)
-    ydd = make_bezier_expr(points_y_dd, bases_dd)
-    zdd = make_bezier_expr(points_z_dd, bases_dd)
+    xdd = make_bezier(points_x_dd, bases_dd)
+    ydd = make_bezier(points_y_dd, bases_dd)
+    zdd = make_bezier(points_z_dd, bases_dd)
 
     result = [
         xdd(t),
@@ -229,14 +229,14 @@ def inflections_cubic_3d():
     p4 = symbolic_vector_3d('p4')
 
     points = [p1, p2, p3, p4]
-    points_d = get_curve_point_deltas(points, 3)
-    points_dd = get_curve_point_deltas(points_d, 2)
+    points_d = differentiate_curve_points(points)
+    points_dd = differentiate_curve_points(points_d)
 
     bases_d = bezier_bases(2, t)
     bases_dd = bezier_bases(1, t)
 
-    pd = make_bezier_expr(points_d, bases_d)
-    pdd = make_bezier_expr(points_dd, bases_dd)
+    pd = make_bezier(points_d, bases_d)
+    pdd = make_bezier(points_dd, bases_dd)
 
     curvature = pd(t).cross(pdd(t))
     curvature = expand(curvature)
@@ -274,11 +274,11 @@ def maxima_1st_cubic_2d():
     p4 = symbolic_vector_2d('p4')
 
     points = [p1, p2, p3, p4]
-    points_d = get_curve_point_deltas(points, 3)
+    points_d = differentiate_curve_points(points)
 
     bases_d = bezier_bases(2, t)
 
-    pd = make_bezier_expr(points_d, bases_d)(t)
+    pd = make_bezier(points_d, bases_d)(t)
     pd = expand(pd)
 
     solutions = map(lambda partial: solveset(partial, t).args[0], pd)
@@ -297,12 +297,12 @@ def maxima_2nd_cubic_2d():
     p4 = symbolic_vector_2d('p4')
 
     points = [p1, p2, p3, p4]
-    points_d = get_curve_point_deltas(points, 3)
-    points_dd = get_curve_point_deltas(points_d, 2)
+    points_d = differentiate_curve_points(points)
+    points_dd = differentiate_curve_points(points_d)
 
     bases_dd = bezier_bases(1, t)
 
-    pdd = make_bezier_expr(points_dd, bases_dd)(t)
+    pdd = make_bezier(points_dd, bases_dd)(t)
     pdd = expand(pdd)
 
     solutions = map(lambda partial: solveset(partial,t).args[0], pdd)
@@ -321,14 +321,14 @@ def inflections_cubic_2d():
     p4 = symbolic_vector_2d('p4')
 
     points = [p1, p2, p3, p4]
-    points_d = get_curve_point_deltas(points, 3)
-    points_dd = get_curve_point_deltas(points_d, 2)
+    points_d = differentiate_curve_points(points)
+    points_dd = differentiate_curve_points(points_d)
 
     bases_d = bezier_bases(2, t)
     bases_dd = bezier_bases(1, t)
 
-    pd = make_bezier_expr(points_d, bases_d)
-    pdd = make_bezier_expr(points_dd, bases_dd)
+    pd = make_bezier(points_d, bases_d)
+    pdd = make_bezier(points_dd, bases_dd)
 
     curvature = cross_2d(pd(t), pdd(t))
     curvature = expand(curvature)
@@ -349,14 +349,14 @@ def inflections_deriv_cubic_2d():
     p4 = symbolic_vector_2d('p4')
 
     points = [p1, p2, p3, p4]
-    points_d = get_curve_point_deltas(points, 3)
-    points_dd = get_curve_point_deltas(points_d, 2)
+    points_d = differentiate_curve_points(points)
+    points_dd = differentiate_curve_points(points_d)
 
     bases_d = bezier_bases(2, t)
     bases_dd = bezier_bases(1, t)
 
-    pd = make_bezier_expr(points_d, bases_d)
-    pdd = make_bezier_expr(points_dd, bases_dd)
+    pd = make_bezier(points_d, bases_d)
+    pdd = make_bezier(points_dd, bases_dd)
 
     curvature = cross_2d(pd(t), pdd(t))
     curvature = expand(curvature)
@@ -382,14 +382,14 @@ def curvature_maxima_cubic_2d():
     p4[1] = 0
 
     points = [p1, p2, p3, p4]
-    points_d = get_curve_point_deltas(points, 3)
-    points_dd = get_curve_point_deltas(points_d, 2)
+    points_d = differentiate_curve_points(points)
+    points_dd = differentiate_curve_points(points_d)
 
     bases_d = bezier_bases(2, t)
     bases_dd = bezier_bases(1, t)
 
-    pd = make_bezier_expr(points_d, bases_d)
-    pdd = make_bezier_expr(points_dd, bases_dd)
+    pd = make_bezier(points_d, bases_d)
+    pdd = make_bezier(points_dd, bases_dd)
 
     # Full curvature definition: https://pomax.github.io/bezierinfo/#curvature
 
@@ -424,10 +424,10 @@ def silhouette_cubic_2d():
     points_x_d = (xd1, xd2, xd3)
     points_y_d = (yd1, yd2, yd3)
 
-    x = make_bezier_expr(points_x, bases)(t)
-    y = make_bezier_expr(points_y, bases)(t)
-    xd = make_bezier_expr(points_x_d, bases_d)(t)
-    yd = make_bezier_expr(points_y_d, bases_d)(t)
+    x = make_bezier(points_x, bases)(t)
+    y = make_bezier(points_y, bases)(t)
+    xd = make_bezier(points_x_d, bases_d)(t)
+    yd = make_bezier(points_y_d, bases_d)(t)
 
     normal_x = -yd
     normal_y = xd
@@ -477,8 +477,8 @@ def silhouette_quadratic_2d():
     points = (p1, p2, p3)
     points_d = (pd1, pd2)
 
-    p = make_bezier_expr(points, bases)(t)
-    pd = make_bezier_expr(points_d, bases_d)(t)
+    p = make_bezier(points, bases)(t)
+    pd = make_bezier(points_d, bases_d)(t)
 
     normal = Matrix([-pd[1], pd[0]])
     viewdir = p - view_point
@@ -492,7 +492,6 @@ def silhouette_quadratic_2d():
     solution = solveset(solution, t)
     common, exprs = cse(solution, numbered_symbols('a'))
     print_code(common, exprs)
-
 
 def silhouette_quadratic_2d_gradient():
     t = symbols('t')
@@ -514,8 +513,8 @@ def silhouette_quadratic_2d_gradient():
     points = (p1, p2, p3)
     normals = (n1, n2)
 
-    p = make_bezier_expr(points, bases_p)(t)
-    n = make_bezier_expr(normals, bases_n)(t)
+    p = make_bezier(points, bases_p)(t)
+    n = make_bezier(normals, bases_n)(t)
 
     viewdir = p - view_point
 
@@ -578,13 +577,13 @@ def silhouette_quadratic_projected_2d():
 
     bases = bezier_bases(2, u)
     points = (patch[0][0], patch[0][1], patch[0][2])
-    p = make_bezier_expr(points, bases)(u)
+    p = make_bezier(points, bases)(u)
 
     patch_n = [
         [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
         [symbolic_vector_3d('normal2'), symbolic_vector_3d('normal3')],
     ]
-    normal = patch_3d(patch_n, u, v)
+    normal = make_patch(patch_n, u, v)
     normal[2] = 0
 
     # patch_viewdir = [
@@ -627,35 +626,10 @@ def silhouette_quadratic_3d_gradient():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
    
-    pos = patch_3d(patch, u, v)
-
-    # symbolic
-    # patch_n = [
-    #     [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
-    #     [symbolic_vector_3d('normal3'), symbolic_vector_3d('normal4')],
-    # ]
-    # normal = patch_3d(patch_n, u, v)
-
-    # u-major ordering
-    # tangents_u = [
-    #     [2 * (patch[1][0] - patch[0][0]), 2 * (patch[2][0] - patch[1][0])],
-    #     [2 * (patch[1][1] - patch[0][1]), 2 * (patch[2][1] - patch[1][1])]
-    # ]
-    # tangents_v = [
-    #     [2 * (patch[0][1] - patch[0][0]), 2 * (patch[1][1] - patch[1][0])],
-    #     [2 * (patch[0][2] - patch[0][1]), 2 * (patch[1][2] - patch[1][1])]
-    # ]
-    # note patch[v,u], because perversely, that's how row-major layout indexing works now.
-    tangents_u = [
-        [2 * (patch[0][1] - patch[0][0]), 2 * (patch[0][2] - patch[0][1])],
-        [2 * (patch[1][1] - patch[1][0]), 2 * (patch[1][2] - patch[1][1])]
-    ]
-    tangents_v = [
-        [2 * (patch[1][0] - patch[0][0]), 2 * (patch[1][1] - patch[0][1])],
-        [2 * (patch[2][0] - patch[1][0]), 2 * (patch[2][1] - patch[1][1])]
-    ]
-    tangent_u = patch_3d(tangents_u, u, v)
-    tangent_v = patch_3d(tangents_v, u, v)
+    pos = make_patch(patch, u, v)
+ 
+    tangent_u = diff(pos, u)
+    tangent_v = diff(pos, v)
     normal = tangent_u.cross(tangent_v)
 
     viewpos = symbolic_vector_3d('viewPoint')
@@ -669,6 +643,37 @@ def silhouette_quadratic_3d_gradient():
     common, exprs = cse((partial_u, partial_v), numbered_symbols('a'))
     print_code(common, exprs)
 
+def silhouette_quadratic_3d_edge():
+    u, v = symbols('u v')
+
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+   
+    pos = make_patch(patch, u, v)
+ 
+    tangent_u = diff(pos, u)
+    tangent_v = diff(pos, v)
+    normal = tangent_u.cross(tangent_v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewdir = pos - viewpos
+
+    solution = viewdir.dot(normal)
+    solution.subs(v, 0)
+    # solution = solve(solution, u)
+
+    common, exprs = cse(solution, numbered_symbols('a'))
+    for (i,t) in enumerate(common):
+        print("%i, %s"%(i, t))
+
+    for (i, t) in enumerate(exprs):
+        print("%i, %s" % (i, t))
+    
+    # common, exprs = cse(solution, numbered_symbols('a'))
+    # print_code(common, exprs)
 
 def quadratic_patch_3d_normals():
     u, v = symbols('u v')
@@ -679,11 +684,10 @@ def quadratic_patch_3d_normals():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
 
-    pos = patch_3d(patch, u, v)
+    pos = make_patch(patch, u, v)
 
     tangent_u = diff(pos, u)
     tangent_v = diff(pos, v)
-
     normal = tangent_u.cross(tangent_v)
 
     common, exprs = cse(normal, numbered_symbols('a'))
@@ -699,8 +703,8 @@ def quadratic_2d_bezier():
     bases = bezier_bases(2, t)
     bases_d = bezier_bases(1, t)
 
-    p = make_bezier_expr((p1, p2, p3), bases)(t)
-    pd = make_bezier_expr((pd1, pd2), bases_d)(t)
+    p = make_bezier((p1, p2, p3), bases)(t)
+    pd = make_bezier((pd1, pd2), bases_d)(t)
 
     common, exprs = cse(p, numbered_symbols('a'))
     print("Point:")
@@ -721,7 +725,7 @@ def quartic_bezier_3d():
 
     points = (p1, p2, p3, p4, p5)
     bases = bezier_bases(4, t)
-    p = make_bezier_expr(points, bases)(t)
+    p = make_bezier(points, bases)(t)
 
     common, exprs = cse(p, numbered_symbols('a'))
 
@@ -758,7 +762,7 @@ def diagonal_of_linear_patch():
 
     u, v, t = symbols('u v t')
 
-    patch = patch_3d(patch, u, v)
+    patch = make_patch(patch, u, v)
 
     patch.subs(p2, p2 - p1).subs(p3, p3 - p1)
     patch = patch.subs(v, t).subs(u, t)
@@ -766,64 +770,6 @@ def diagonal_of_linear_patch():
     pprint(patch)
 
 def diagonal_of_quadratic_patch():
-    ''' 
-    We get a quartic result for the naive case
-
-    Instead, we should be looking for Casteljau
-    algorithm constructions. Geometry.
-
-    We should be able to take this thing, and
-    factor out more elementary curves again.
-
-    We can't ignore any control points.
-
-    For an non-basis straight-line in uv space,
-    the resulting curve on the surface will also
-    be a quartic of this type, right?
-
-    Take a Lillian/Belochian approach to splitting
-    the quartic up into lesser-degree components.
-    Emminently possible, right?
-
-    We can:
-        - find these
-        - draw them directly.
-        - represent them with piece-wise lower-degree
-
-    Let's try this:
-
-    Given two identified silhouette point, which we
-    find through modest means, find the quartic
-    curve that runs through them.
-
-    That *should* be our silhouette, if our assumptions
-    hold.
-
-    No more root finding needed to do only that.
-
-    Can we find all possible silhouette curves this way?
-    No, we already found that we'd at least need to 
-    check along the diagonals too, given some patch
-    shapes. But for our concave, uniform patches it
-    should work!
-
-    --
-
-    Note that the quartic is still technically
-    part of the quadratic surface.
-
-    Queries for points, tangents, normals, they
-    can all be evaluated using the patch
-
-    --
-
-    Todo first:
-
-    Go from parameterized surface formulate of the curve
-    (say, surface_point(t,t) for the diagonal), to a
-    single quartic curve with 5 control points.
-    '''
-
     p1 = symbolic_vector_3d('p1')
     p2 = symbolic_vector_3d('p2')
     p3 = symbolic_vector_3d('p3')
@@ -842,7 +788,7 @@ def diagonal_of_quadratic_patch():
 
     u, v, t = symbols('u v t')
 
-    patch = patch_3d(patch, u, v)
+    patch = make_patch(patch, u, v)
     p = patch.subs(v, t).subs(u, t)
 
     # pprint(p)
@@ -882,13 +828,13 @@ def geodesic_on_quadratic_patch():
 
     u, v, t = symbols('u v t')
 
-    patch = patch_3d(patch, u, v)
+    patch = make_patch(patch, u, v)
 
     # now re-express u,v as linear functions of single param t
     uv1 = symbolic_vector_2d('uv1')
     uv2 = symbolic_vector_2d('uv2')
     bases_uv = bezier_bases(1, t)
-    uv = make_bezier_expr((uv1, uv2), bases_uv)(t)
+    uv = make_bezier((uv1, uv2), bases_uv)(t)
 
     p = patch.subs(u, uv[0]).subs(v, uv[1])
 
@@ -927,14 +873,14 @@ def quadratic_curve_on_quadratic_patch():
         [p4, p5, p6],
         [p7, p8, p9]
     ]
-    patch = patch_3d(patch, u, v)
+    patch = make_patch(patch, u, v)
     
     uv1 = symbolic_vector_2d('uv1')
     uv2 = symbolic_vector_2d('uv2')
     uv3 = symbolic_vector_2d('uv3')
 
     bases_uv = bezier_bases(2, t)
-    uv = make_bezier_expr((uv1, uv2, uv3), bases_uv)(t)
+    uv = make_bezier((uv1, uv2, uv3), bases_uv)(t)
 
     p = patch.subs(u, uv[0]).subs(v, uv[1])
 
@@ -962,12 +908,11 @@ def prove_patch_derives():
         [p4, p5, p6],
         [p7, p8, p9]
     ]
-    pos = patch_3d(patch, u, v)
+    pos = make_patch(patch, u, v)
 
-    patch_du, patch_dv = differentiate_patch(patch)
-    pos_du = patch_3d(patch_du, u, v)
-    pos_dv = patch_3d(patch_dv, u, v)
-
+    patch_du, patch_dv = differentiate_patch_points(patch)
+    pos_du = make_patch(patch_du, u, v)
+    pos_dv = make_patch(patch_dv, u, v)
     normals_a = pos_du.cross(pos_dv)
 
     print("Normals A:\n")
@@ -989,36 +934,40 @@ def prove_patch_derives():
     '''
 
 
-def differentiate_patch(patch):
-    '''
-    Todo: this calculates point deltas only,
-    but could actually return the full patch
-    derivative formulate, just zip with bersteins
-    '''
-    
-    patch_du = []
-    patch_dv = []
+def prove_curve_derives():
+    t = symbols('t')
 
-    patch_degree = len(patch[0])-1
-    for v in range(0, patch_degree):
-        du = []
-        dv = []
-        for u in range(0, patch_degree):
-            du.append((patch_degree-1) * (patch[v][u+1] - patch[v][u]))
-            dv.append((patch_degree-1) * (patch[v+1][u] - patch[v][u]))
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
 
-        patch_du.append(du)
-        patch_dv.append(dv)
+    points = (p1, p2, p3)
+    pos = make_bezier(points, bezier_bases(2, t))(t)
+
+    tangents = differentiate_curve_points(points)
+    tangents_a = expand(make_bezier(tangents, bezier_bases(1, t))(t))
     
-    return (patch_du, patch_dv)
+    tangents_b = diff(pos, t)
+
+    tangents_a = expand(tangents_a)
+    tangents_b = expand(tangents_b)
+
+    print("\nTangents A:\n")
+    pprint(tangents_a)
+    print("\nTangents B:\n")
+    pprint(tangents_b)
+    print("\nDifference:\n")
+    pprint(tangents_b - tangents_a)
 
 def main():
     # === Evaluating Curves & Surfaces ===
 
     # quadratic_2d_bezier()
     # bezier_quartic()
-    quadratic_patch_3d_normals()
-    prove_patch_derives()
+    # quadratic_patch_3d_normals()
+
+    prove_curve_derives()
+    # prove_patch_derives()
 
     # === Curvature min/max, inflectons ===
 
@@ -1040,6 +989,7 @@ def main():
     # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
     # silhouette_quadratic_3d_gradient()
+    # silhouette_quadratic_3d_edge()
 
     # === Curves defined on (or embedded within) surfaces
 

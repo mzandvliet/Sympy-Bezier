@@ -76,7 +76,7 @@ def bezier_bases(n, param):
     return bases
 
 
-def make_bezier_expr(points, bases):
+def make_bezier(points, bases):
     if len(points) != len(bases):
         raise Exception("Number of points %i should be equal to number of bases %i" % (
             len(points), len(bases)))
@@ -85,14 +85,38 @@ def make_bezier_expr(points, bases):
     expr = reduce((lambda x, y: x + y), terms)
     return lambda t: expr
 
-def get_curve_point_deltas(points, multiplier):
-    deltas = []
-    for i in range(0, len(points)-1):
-        deltas.append(multiplier * (points[i+1] - points[i]))
-    return deltas
+def differentiate_curve_points(points):
+    points_dt = []
+    input_degree = len(points[0])-1
+    for i in range(0, input_degree):
+        points_dt.append((input_degree-1) * (points[i+1] - points[i]))
+    return points_dt
+
+def differentiate_patch_points(patch):
+    '''
+    Todo: this calculates point deltas only,
+    but could actually return the full patch
+    derivative formulate, just zip with bersteins
+    '''
+
+    patch_du = []
+    patch_dv = []
+
+    input_degree = len(patch[0])-1
+    for v in range(0, input_degree):
+        du = []
+        dv = []
+        for u in range(0, input_degree):
+            du.append((input_degree-1) * (patch[v][u+1] - patch[v][u]))
+            dv.append((input_degree-1) * (patch[v+1][u] - patch[v][u]))
+
+        patch_du.append(du)
+        patch_dv.append(dv)
+
+    return (patch_du, patch_dv)
 
 
-def patch_3d(patch, u, v):
+def make_patch(patch, u, v):
     '''
     Given matrix of points and two parameters, constructs a function that
     samples a position along the given surface. Arbitrary degree.
