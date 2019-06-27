@@ -666,18 +666,18 @@ def silhouette_quadratic_3d_edge():
 
     pos = make_patch(patch, u, v)
  
-    # patch_du = [
-    #     [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
-    #     [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
-    #     [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
-    # ]
-    # patch_dv = [
-    #     [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2')],
-    #     [symbolic_vector_3d('dv3'), symbolic_vector_3d('dv4')],
-    #     [symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
-    # ]
-    patch_du = differentiate_patch_points_u(patch)
-    patch_dv = differentiate_patch_points_v(patch)
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2')],
+        [symbolic_vector_3d('dv3'), symbolic_vector_3d('dv4')],
+        [symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
+    # patch_du = differentiate_patch_points_u(patch)
+    # patch_dv = differentiate_patch_points_v(patch)
 
     tangents_u = make_patch(patch_du, u, v)
     tangents_v = make_patch(patch_dv, u, v)
@@ -685,11 +685,11 @@ def silhouette_quadratic_3d_edge():
     normal = tangents_u.cross(tangents_v)
 
     # viewpos = symbolic_vector_3d('viewPoint')
-    viewpos = Matrix([0,0,0])
-    viewdir = pos - viewpos
+    # viewpos = Matrix([0,0,0])
+    # viewdir = pos - viewpos
 
-    solution = viewdir.dot(normal)
-    # solution = viewdir[0] * normal[0]
+    # solution = viewdir.dot(normal)
+    solution = Eq(normal[2], 0)
     solution = solution.subs(v, 0)
     solution = expand(solution)
     print(solution)
