@@ -89,7 +89,7 @@ def differentiate_curve_points(points):
     points_dt = []
     input_degree = len(points[0])-1
     for i in range(0, input_degree):
-        points_dt.append((input_degree-1) * (points[i+1] - points[i]))
+        points_dt.append((input_degree) * (points[i+1] - points[i]))
     return points_dt
 
 def differentiate_patch_points(patch):
@@ -107,8 +107,8 @@ def differentiate_patch_points(patch):
         du = []
         dv = []
         for u in range(0, input_degree):
-            du.append((input_degree-1) * (patch[v][u+1] - patch[v][u]))
-            dv.append((input_degree-1) * (patch[v+1][u] - patch[v][u]))
+            du.append((input_degree) * (patch[v][u+1] - patch[v][u]))
+            dv.append((input_degree) * (patch[v+1][u] - patch[v][u]))
 
         patch_du.append(du)
         patch_dv.append(dv)

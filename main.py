@@ -890,6 +890,33 @@ def quadratic_curve_on_quadratic_patch():
     common, exprs = cse(p, numbered_symbols('a'))
     print_code(common, exprs)
 
+def prove_curve_derives():
+    t = symbols('t')
+
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+
+    points = (p1, p2, p3)
+    pos = make_bezier(points, bezier_bases(2, t))(t)
+
+    tangents = differentiate_curve_points(points)
+    tangents_a = expand(make_bezier(tangents, bezier_bases(1, t))(t))
+
+    tangents_b = diff(pos, t)
+
+    tangents_a = expand(tangents_a)
+    tangents_b = expand(tangents_b)
+
+    print("\nTangents A:\n")
+    pprint(tangents_a)
+    print("\nTangents B:\n")
+    pprint(tangents_b)
+    print("\nDifference:\n")
+    pprint(tangents_b - tangents_a)
+
+    # The above difference yields [0,0,0], so this checks out
+
 def prove_patch_derives():
     u, v = symbols('u v')
 
@@ -911,53 +938,18 @@ def prove_patch_derives():
     pos = make_patch(patch, u, v)
 
     patch_du, patch_dv = differentiate_patch_points(patch)
-    pos_du = make_patch(patch_du, u, v)
-    pos_dv = make_patch(patch_dv, u, v)
-    normals_a = pos_du.cross(pos_dv)
+    tangents_u_a = make_patch(patch_du, u, v)
+    # tangents_v_a = make_patch(patch_dv, u, v)
 
-    print("Normals A:\n")
-    print(normals_a)
+    tangents_u_b = diff(pos, u)
+    # tangents_v_b = diff(pos, v)
 
-    tangent_u = diff(pos, u)
-    tangent_v = diff(pos, v)
-    normals_b = tangent_u.cross(tangent_v)
-
-    print("Normals B:\n")
-    print(normals_b)
-
-    '''
-    Todo:
-
-    Compare the above resulting formulas, figure
-    out why the delta-point formulation is turning
-    out different from the full definition.
-    '''
-
-
-def prove_curve_derives():
-    t = symbols('t')
-
-    p1 = symbolic_vector_3d('p1')
-    p2 = symbolic_vector_3d('p2')
-    p3 = symbolic_vector_3d('p3')
-
-    points = (p1, p2, p3)
-    pos = make_bezier(points, bezier_bases(2, t))(t)
-
-    tangents = differentiate_curve_points(points)
-    tangents_a = expand(make_bezier(tangents, bezier_bases(1, t))(t))
-    
-    tangents_b = diff(pos, t)
-
-    tangents_a = expand(tangents_a)
-    tangents_b = expand(tangents_b)
-
-    print("\nTangents A:\n")
-    pprint(tangents_a)
+    print("\n\Tangents A:\n")
+    pprint(tangents_u_a)
     print("\nTangents B:\n")
-    pprint(tangents_b)
+    pprint(tangents_u_b)
     print("\nDifference:\n")
-    pprint(tangents_b - tangents_a)
+    pprint(tangents_u_a - tangents_u_b)
 
 def main():
     # === Evaluating Curves & Surfaces ===
@@ -966,8 +958,8 @@ def main():
     # bezier_quartic()
     # quadratic_patch_3d_normals()
 
-    prove_curve_derives()
-    # prove_patch_derives()
+    # prove_curve_derives()
+    prove_patch_derives()
 
     # === Curvature min/max, inflectons ===
 
