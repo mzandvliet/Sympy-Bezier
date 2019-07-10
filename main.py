@@ -6,7 +6,14 @@ from ramjet.math import *
 from ramjet.util import *
 
 '''
-Todo: less messy linear algebra
+Todo:
+
+- Use sub-curve evaluation start of tensor patches for efficiency, and possibly a drop of degree
+- Instead of dot(viewdir,normal), can we derive same info from dot(viewdir,tangent) + dot(viewdir,cotangent)?
+- 2nd derivatives for gradient information available? would make for super-fast convergence
+- Vector field approaches for high-degree problems (will help with lighting)
+- Bezier point-mass distributions, and their equations of motion
+
 '''
 
 # Assume a given cubic curve starts at [0,0] and ends at [x,0]
@@ -539,26 +546,12 @@ def silhouette_quadratic_projected_2d():
     but now need full normal information around the
     slice curve.
 
-    Normals can be fully described by transformed versions
-    of either:
-
-    6 control points for edge, or 9 controls points for middles
-    2 control point deltas for edge, or 4 deltas for middles
-    
-    (Hmm, think about the normals for middle. What can we say
-    about them, such that we do not need to consider all 9 controls?)
-
-    In this SymPy formulation, we can assume that we recieved
-    a 4-point delta patch, already aligned to 2d plane
-
     --
 
-    Todo:
+    Edit:
 
-    Figured out that you can cache your surface normals in yet another bezier patch of 1 degree lower than your surface
-
-    So we can actually get rid of the cross product here
-    This will yield a quadratic solve at the end :D
+    Here, I wrongfully assumed a single 2x2 patch could 
+    cache normals of a 3x3 quadratic patch.
 
     '''
 
@@ -585,14 +578,6 @@ def silhouette_quadratic_projected_2d():
     ]
     normal = make_patch(patch_n, u, v)
     normal[2] = 0
-
-    # patch_viewdir = [
-    #     [symbolic_vector_3d('viewdir1'), symbolic_vector_3d('viewdir2'), symbolic_vector_3d('viewdir3')],
-    #     [symbolic_vector_3d('viewdir4'), symbolic_vector_3d('viewdir5'), symbolic_vector_3d('viewdir6')],
-    #     [symbolic_vector_3d('viewdir7'), symbolic_vector_3d('viewdir8'), symbolic_vector_3d('viewdir9')],
-    # ]
-    # viewdir = patch_3d(patch_viewdir, u, v)
-    # viewdir[2] = 0
 
     viewpos = symbolic_vector_3d('viewpos')
     viewdir = p - viewpos
@@ -634,9 +619,8 @@ def silhouette_quadratic_3d_gradient():
         [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
     ]
     patch_dv = [
-        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2')],
-        [symbolic_vector_3d('dv3'), symbolic_vector_3d('dv4')],
-        [symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3')],
+        [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
     ]
  
     tangents_u = make_patch(patch_du, u, v)
@@ -653,6 +637,51 @@ def silhouette_quadratic_3d_gradient():
     partial_v = diff(solution, v)
 
     common, exprs = cse((partial_u, partial_v), numbered_symbols('a'))
+    print_code(common, exprs)
+
+def silhouette_quadratic_3d_gradient_2nd():
+    u, v = symbols('u v')
+
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+   
+    pos = make_patch(patch, u, v)
+
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3')],
+        [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
+ 
+    tangents_u = make_patch(patch_du, u, v)
+    tangents_v = make_patch(patch_dv, u, v)
+
+    normal = tangents_u.cross(tangents_v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewdir = pos - viewpos
+
+    '''
+    Idea: derive 2nd order gradient in order to converge way faster
+
+    Todo: this involves the Hessian, which I need to study up on.
+    '''
+
+    solution = viewdir.dot(normal)**2
+
+    partial_u = diff(solution, u)
+    partial_v = diff(solution, v)
+    partial_uu = diff(partial_u, u)
+    partial_vv = diff(partial_v, v)
+
+    common, exprs = cse((partial_u, partial_uu, partial_v, partial_vv), numbered_symbols('a'))
     print_code(common, exprs)
 
 def silhouette_quadratic_3d_edge():
@@ -672,9 +701,94 @@ def silhouette_quadratic_3d_edge():
         [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
     ]
     patch_dv = [
-        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2')],
-        [symbolic_vector_3d('dv3'), symbolic_vector_3d('dv4')],
-        [symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3')],
+        [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
+
+    tangents_u = make_patch(patch_du, u, v)
+    tangents_v = make_patch(patch_dv, u, v)
+
+    normal = tangents_u.cross(tangents_v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewpos = Matrix([0,0,0])
+    viewdir = pos - viewpos
+
+    solution = viewdir.dot(normal)
+    solution = Eq(solution, 0)
+    solution = solution.subs(v, 0)
+    solution = expand(solution)
+    print(solution)
+
+    poly = to_polynomial(solution, u)
+    print("Got polynomial of degree: %i"%poly.degree())
+    # 5th degree poly in u, so we need to find more clever workarounds
+
+    # solution = solve(solution, u)
+
+    # common, exprs = cse(solution, numbered_symbols('a'))
+    # for (i,t) in enumerate(common):
+    #     print("%i, %s"%(i, t))
+
+    # for (i, t) in enumerate(exprs):
+    #     print("%i, %s" % (i, t))
+    
+    # common, exprs = cse(solution, numbered_symbols('a'))
+    # print_code(common, exprs)
+
+def silhouette_quadratic_3d_edge_u():
+    u = symbols('u')
+
+    edge = (symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3'))
+
+    bases_1st = bezier_bases(1, u)
+    bases_2nd = bezier_bases(2, u)
+    pos = make_bezier(edge, bases_2nd)(u)
+ 
+    edge_du = (symbolic_vector_3d('du1'), symbolic_vector_3d('du2'))
+    edge_dv = (symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3'))
+
+    tangents_u = make_bezier(edge_du, bases_1st)(u)
+    tangents_v = make_bezier(edge_dv, bases_2nd)(u)
+
+    normal = tangents_u.cross(tangents_v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewpos = Matrix([0,0,0])
+    viewdir = pos - viewpos
+
+    solution = viewdir.dot(normal)
+    pprint(solution)
+    '''
+    Turns out that writing this specialized version yields the same
+    result as evaluating the full thing with v=0 substitution. 
+    
+    Sympy is cool like that. :)
+    '''
+
+    # poly = to_polynomial(solution, u)
+    # print("Got polynomial of degree: %i"%poly.degree())
+  
+
+def silhouette_quadratic_3d_doubledot():
+    u, v = symbols('u v')
+
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+
+    pos = make_patch(patch, u, v)
+ 
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3')],
+        [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
     ]
     # patch_du = differentiate_patch_points_u(patch)
     # patch_dv = differentiate_patch_points_v(patch)
@@ -682,14 +796,58 @@ def silhouette_quadratic_3d_edge():
     tangents_u = make_patch(patch_du, u, v)
     tangents_v = make_patch(patch_dv, u, v)
 
-    normal = tangents_u.cross(tangents_v)
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewpos = Matrix([0,0,0])
+    viewdir = pos - viewpos
 
-    # viewpos = symbolic_vector_3d('viewPoint')
-    # viewpos = Matrix([0,0,0])
-    # viewdir = pos - viewpos
+    '''
+    Idea: We're looking for condition where dot(viewdir,normal)=0. How else can we get
+    at this information?
 
-    # solution = viewdir.dot(normal)
-    solution = Eq(normal[2], 0)
+    We have 2 orthogonal tangents ready to go. If we dot them both, and add them, and
+    they sum to zero, we know the viewdir is in the tangent plane. Which is what
+    we wanted to know, except now there's no cross product.
+
+    Edit: Ah, of course the identity that we're looking to use is sin^2+cos^2 = 1
+    This changes things. 6th degree polynomial. Nevermind.
+
+    There's some more identities to play with, see if anything simpler pops out.
+
+    '''
+    dota = viewdir.dot(tangents_u)
+    dotb = viewdir.dot(tangents_v)
+
+    dot = dota**2 - dotb**2
+    solution = Eq(dot, 0)
+    solution = solution.subs(v, 0)
+    solution = expand(solution)
+    print(solution)
+
+def silhouette_quadratic_3d_quadratic_normals():
+    u, v = symbols('u v')
+
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+
+    pos = make_patch(patch, u, v)
+ 
+    patch_n = [
+        [symbolic_vector_3d('n1'), symbolic_vector_3d('n2')],
+        [symbolic_vector_3d('n3'), symbolic_vector_3d('n4')],
+        [symbolic_vector_3d('n5'), symbolic_vector_3d('n6')]
+    ]
+
+    normal = make_patch(patch_n, u, v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewpos = Matrix([0,0,0])
+    viewdir = pos - viewpos
+
+    solution = viewdir.dot(normal)
+    solution = Eq(solution, 0)
     solution = solution.subs(v, 0)
     solution = expand(solution)
     print(solution)
@@ -710,29 +868,96 @@ def silhouette_quadratic_3d_edge():
     # common, exprs = cse(solution, numbered_symbols('a'))
     # print_code(common, exprs)
 
-def silhouette_quadratic_3d_homogeneous_edge():
+def silhouette_quadratic_3d_edge_gradient():
     u, v = symbols('u v')
 
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+
+    pos = make_patch(patch, u, v)
+ 
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3')],
+        [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
+    # patch_du = differentiate_patch_points_u(patch)
+    # patch_dv = differentiate_patch_points_v(patch)
+
+    tangents_u = make_patch(patch_du, u, v)
+    tangents_v = make_patch(patch_dv, u, v)
+
+    normal = tangents_u.cross(tangents_v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewdir = pos - viewpos
+
+    solution = viewdir.dot(normal)**2
+    solution = solution.subs(v, 0)
+    partial_u = diff(solution, u)
+
+    common, exprs = cse(partial_u, numbered_symbols('a'))
+    print_code(common, exprs)
+
+def silhouette_quadratic_3d_homogeneous_edge():
+    '''
+    Here, we assume we already have tangents in projective
+    space available to us.
+    '''
+    u, v = symbols('u v')
+ 
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3')],
+        [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
+
+    tangents_u_hom = make_patch(patch_du, u, v)
+    tangents_v_hom = make_patch(patch_dv, u, v)
+
+    tangents_u = Matrix((tangents_u_hom / tangents_u_hom[3])[0:3])
+    tangents_v = Matrix((tangents_v_hom / tangents_v_hom[3])[0:3])
+
+    # pprint(tangents_u[0])
+
+    normal = tangents_u.cross(tangents_v)
+
+    pprint(normal[2])
+
+    # solution = Eq(normal[2], 0)
+    # solution = solution.subs(v, 0)
+    # solution = solve(solution, u)
+    # print(solution)
+
+    # common, exprs = cse(solution, numbered_symbols('a'))
+    # print_code(common, exprs)
+
+def silhouette_quadratic_3d_homogeneous_edge_explicit():
+    '''
+    Here, we assume we already have tangents in projective
+    space available to us.
+    '''
+    u, v = symbols('u v')
+ 
     patch = [
         [symbolic_vector_4d('p1'), symbolic_vector_4d('p2'), symbolic_vector_4d('p3')],
         [symbolic_vector_4d('p4'), symbolic_vector_4d('p5'), symbolic_vector_4d('p6')],
         [symbolic_vector_4d('p7'), symbolic_vector_4d('p8'), symbolic_vector_4d('p9')]
     ]
 
-    pos = make_patch(patch, u, v)
- 
-    patch_du = [
-        [symbolic_vector_4d('du1'), symbolic_vector_4d('du2')],
-        [symbolic_vector_4d('du3'), symbolic_vector_4d('du4')],
-        [symbolic_vector_4d('du5'), symbolic_vector_4d('du6')]
-    ]
-    patch_dv = [
-        [symbolic_vector_4d('dv1'), symbolic_vector_4d('dv2')],
-        [symbolic_vector_4d('dv3'), symbolic_vector_4d('dv4')],
-        [symbolic_vector_4d('dv5'), symbolic_vector_4d('dv6')]
-    ]
-    # patch_du = differentiate_patch_points_u(patch)
-    # patch_dv = differentiate_patch_points_v(patch)
+    patch_du = differentiate_patch_points_u(patch)
+    patch_dv = differentiate_patch_points_v(patch)
 
     tangents_u_hom = make_patch(patch_du, u, v)
     tangents_v_hom = make_patch(patch_dv, u, v)
@@ -742,15 +967,49 @@ def silhouette_quadratic_3d_homogeneous_edge():
 
     normal = tangents_u.cross(tangents_v)
 
-    # print(tangents_u[0])
-
-    # viewdir = pos
-
     solution = Eq(normal[2], 0)
     solution = solution.subs(v, 0)
-    solution = solve(solution, u)
+    poly = to_polynomial(solution, u)
+    print("Degree: " + str(poly.degree()))
+    # Yields a degree 3 polynomial
 
-    common, exprs = cse(solution, numbered_symbols('a'))
+    # solution = solve(solution, u)
+    # print(solution)
+
+    # common, exprs = cse(solution, numbered_symbols('a'))
+    # print_code(common, exprs)
+
+def silhouette_quadratic_3d_homogeneous_edge_explicit_gradient():
+    '''
+    Here, we assume we already have tangents in projective
+    space available to us.
+    '''
+    u, v = symbols('u v')
+ 
+    patch = [
+        [symbolic_vector_4d('p1'), symbolic_vector_4d('p2'), symbolic_vector_4d('p3')],
+        [symbolic_vector_4d('p4'), symbolic_vector_4d('p5'), symbolic_vector_4d('p6')],
+        [symbolic_vector_4d('p7'), symbolic_vector_4d('p8'), symbolic_vector_4d('p9')]
+    ]
+
+    patch[0][0] = Matrix([0,0,0,1])
+
+    patch_du = differentiate_patch_points_u(patch)
+    patch_dv = differentiate_patch_points_v(patch)
+
+    tangents_u_hom = make_patch(patch_du, u, v)
+    tangents_v_hom = make_patch(patch_dv, u, v)
+
+    tangents_u = Matrix((tangents_u_hom / tangents_u_hom[3])[0:3])
+    tangents_v = Matrix((tangents_v_hom / tangents_v_hom[3])[0:3])
+
+    normal = tangents_u.cross(tangents_v)
+
+    solution = normal[2]**2
+    solution = solution.subs(v, 0)
+    partial_u = diff(solution, u)
+
+    common, exprs = cse(partial_u, numbered_symbols('a'))
     print_code(common, exprs)
 
 def quadratic_patch_3d_normals():
@@ -920,10 +1179,10 @@ def geodesic_on_quadratic_patch():
 
     common, exprs = cse(p, numbered_symbols('a'))
 
-    for expr in exprs:
-        pprint(expr)
+    # for expr in exprs:
+    #     pprint(expr)
 
-    # print_code(common, exprs)
+    print_code(common, exprs)
 
 def quadratic_curve_on_quadratic_patch():
     '''
@@ -1074,8 +1333,16 @@ def main():
     # silhouette_quadratic_patch_3d()
     # silhouette_quadratic_projected_2d()
     # silhouette_quadratic_3d_gradient()
+    # silhouette_quadratic_3d_gradient_2nd()
     # silhouette_quadratic_3d_edge()
-    silhouette_quadratic_3d_homogeneous_edge()
+    silhouette_quadratic_3d_edge_gradient()
+    # silhouette_quadratic_3d_edge_u()
+    # silhouette_quadratic_3d_homogeneous_edge()
+    # silhouette_quadratic_3d_homogeneous_edge_explicit()
+    # silhouette_quadratic_3d_homogeneous_edge_explicit_gradient()
+    # silhouette_quadratic_3d_doubledot()
+
+    # silhouette_quadratic_3d_quadratic_normals()    
 
     # === Curves defined on (or embedded within) surfaces
 
