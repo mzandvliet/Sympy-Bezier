@@ -690,6 +690,56 @@ def silhouette_quadratic_3d_gradient_wrt_embedded_cubic():
     common, exprs = cse(partials, numbered_symbols('a'))
     print_code(common, exprs)
 
+def silhouette_quadratic_3d_gradient_wrt_embedded_cubic_tangents():
+    u, v, t, tuv2, tuv3 = symbols('u v t tuv2 tuv3')
+
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+   
+    pos = make_patch(patch, u, v)
+
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3')],
+        [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
+ 
+    tangents_u = make_patch(patch_du, u, v)
+    tangents_v = make_patch(patch_dv, u, v)
+
+    normal = tangents_u.cross(tangents_v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewdir = pos - viewpos
+
+    solution = viewdir.dot(normal)**2
+
+    uv1 = symbolic_vector_2d('uv1')
+    uv4 = symbolic_vector_2d('uv4')
+    uv2 = uv1 + symbolic_vector_2d('duv2') * tuv2
+    uv3 = uv4 + symbolic_vector_2d('duv3') * tuv3
+    
+    uvs = (uv1, uv2, uv3, uv4)
+    bases_uv = bezier_bases(3, t)
+    uv = make_bezier(uvs, bases_uv)(t)
+
+    solution = solution.subs(u, uv[0]).subs(v, uv[1])
+
+    partials = [
+        diff(solution, tuv2),
+        diff(solution, tuv3)
+    ]
+
+    common, exprs = cse(partials, numbered_symbols('a'))
+    print_code(common, exprs)
+
 def silhouette_quadratic_3d_gradient_2nd():
     u, v = symbols('u v')
 
@@ -1429,7 +1479,8 @@ def main():
     # silhouette_quadratic_3d_homogeneous_edge_explicit_gradient()
     # silhouette_quadratic_3d_doubledot()
 
-    silhouette_quadratic_3d_gradient_wrt_embedded_cubic()
+    # silhouette_quadratic_3d_gradient_wrt_embedded_cubic()
+    silhouette_quadratic_3d_gradient_wrt_embedded_cubic_tangents()
 
     # silhouette_quadratic_3d_quadratic_normals()    
 
