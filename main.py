@@ -639,6 +639,57 @@ def silhouette_quadratic_3d_gradient():
     common, exprs = cse((partial_u, partial_v), numbered_symbols('a'))
     print_code(common, exprs)
 
+def silhouette_quadratic_3d_gradient_wrt_embedded_cubic():
+    u, v, t = symbols('u v t')
+
+    patch = [
+        [symbolic_vector_3d('p1'), symbolic_vector_3d('p2'), symbolic_vector_3d('p3')],
+        [symbolic_vector_3d('p4'), symbolic_vector_3d('p5'), symbolic_vector_3d('p6')],
+        [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
+    ]
+   
+    pos = make_patch(patch, u, v)
+
+    patch_du = [
+        [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
+        [symbolic_vector_3d('du3'), symbolic_vector_3d('du4')],
+        [symbolic_vector_3d('du5'), symbolic_vector_3d('du6')]
+    ]
+    patch_dv = [
+        [symbolic_vector_3d('dv1'), symbolic_vector_3d('dv2'), symbolic_vector_3d('dv3')],
+        [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
+    ]
+ 
+    tangents_u = make_patch(patch_du, u, v)
+    tangents_v = make_patch(patch_dv, u, v)
+
+    normal = tangents_u.cross(tangents_v)
+
+    viewpos = symbolic_vector_3d('viewPoint')
+    viewdir = pos - viewpos
+
+    solution = viewdir.dot(normal)**2
+
+    uv1 = symbolic_vector_2d('uv1')
+    uv2 = symbolic_vector_2d('uv2')
+    uv3 = symbolic_vector_2d('uv3')
+    uv4 = symbolic_vector_2d('uv4')
+    uvs = (uv1, uv2, uv3, uv4)
+
+    bases_uv = bezier_bases(3, t)
+    uv = make_bezier(uvs, bases_uv)(t)
+
+    solution = solution.subs(u, uv[0]).subs(v, uv[1])
+
+    partials = []
+    for p in uvs:
+        partials.append(diff(solution, p))
+        # partials.append(diff(solution, p[0]))
+        # partials.append(diff(solution, p[1]))
+
+    common, exprs = cse(partials, numbered_symbols('a'))
+    print_code(common, exprs)
+
 def silhouette_quadratic_3d_gradient_2nd():
     u, v = symbols('u v')
 
@@ -1229,6 +1280,42 @@ def quadratic_curve_on_quadratic_patch():
     common, exprs = cse(p, numbered_symbols('a'))
     print_code(common, exprs)
 
+def cubic_curve_on_quadratic_patch():
+    u, v, t = symbols('u v t')
+
+    p1 = symbolic_vector_3d('p1')
+    p2 = symbolic_vector_3d('p2')
+    p3 = symbolic_vector_3d('p3')
+    p4 = symbolic_vector_3d('p4')
+    p5 = symbolic_vector_3d('p5')
+    p6 = symbolic_vector_3d('p6')
+    p7 = symbolic_vector_3d('p7')
+    p8 = symbolic_vector_3d('p8')
+    p9 = symbolic_vector_3d('p9')
+
+    patch = [
+        [p1, p2, p3],
+        [p4, p5, p6],
+        [p7, p8, p9]
+    ]
+    patch = make_patch(patch, u, v)
+    
+    uv1 = symbolic_vector_2d('uv1')
+    uv2 = symbolic_vector_2d('uv2')
+    uv3 = symbolic_vector_2d('uv3')
+    uv4 = symbolic_vector_2d('uv4')
+
+    bases_uv = bezier_bases(3, t)
+    uv = make_bezier((uv1, uv2, uv3, uv4), bases_uv)(t)
+
+    p = patch.subs(u, uv[0]).subs(v, uv[1])
+
+    poly = to_polynomial(p[0], t)
+    print("Got polynomial of degree: " + str(poly.degree()))
+
+    common, exprs = cse(p, numbered_symbols('a'))
+    print_code(common, exprs)
+
 def prove_curve_derives():
     t = symbols('t')
 
@@ -1335,12 +1422,14 @@ def main():
     # silhouette_quadratic_3d_gradient()
     # silhouette_quadratic_3d_gradient_2nd()
     # silhouette_quadratic_3d_edge()
-    silhouette_quadratic_3d_edge_gradient()
+    # silhouette_quadratic_3d_edge_gradient()
     # silhouette_quadratic_3d_edge_u()
     # silhouette_quadratic_3d_homogeneous_edge()
     # silhouette_quadratic_3d_homogeneous_edge_explicit()
     # silhouette_quadratic_3d_homogeneous_edge_explicit_gradient()
     # silhouette_quadratic_3d_doubledot()
+
+    silhouette_quadratic_3d_gradient_wrt_embedded_cubic()
 
     # silhouette_quadratic_3d_quadratic_normals()    
 
@@ -1350,6 +1439,7 @@ def main():
     # diagonal_of_quadratic_patch()
     # geodesic_on_quadratic_patch()
     # quadratic_curve_on_quadratic_patch()
+    # cubic_curve_on_quadratic_patch()
     
     # Kinematics
 
