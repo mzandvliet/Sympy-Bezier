@@ -1168,7 +1168,6 @@ def quartic_bezier_3d():
     p = make_bezier(points, bases)(t)
 
     common, exprs = cse(p, numbered_symbols('a'))
-
     print_code(common, exprs)
 
     # points_d = get_curve_point_deltas(points, 4)
@@ -1178,11 +1177,8 @@ def quartic_bezier_3d():
 def trinomial(n,i,j,k):
     return math.factorial(n) / (math.factorial(i) * math.factorial(j) * math.factorial(k))
 
-def quadratic_triangular_patch_3d():
-    degree = 2
-    u, v, w = symbols('u v w')
-
-    patch = []
+def triangular_patch_3d(symbols, degree):
+    patch = Matrix([0,0,0])
 
     for i in range(0, degree+1):
         for j in range(0, degree+1):
@@ -1191,10 +1187,98 @@ def quadratic_triangular_patch_3d():
                     continue
          
                 tri = trinomial(degree,i,j,k)
-                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j,k)) * tri * (u**i * v**j * w**k)
-                print(p_ijk)
-                patch.append(p_ijk)
+                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
+                patch += p_ijk
 
+    return patch
+
+def quadratic_triangular_patch_3d():
+    u, v, w = symbols('u v w')
+    # w = 1 - u - v
+
+    patch = triangular_patch_3d((u,v,w), 2)
+    patch_du = diff(patch, u)
+    patch_dv = diff(patch, v)
+
+    patch_normal = patch_du.cross(patch_dv)
+
+    print(patch_normal[0])
+
+def quadratic_triangular_patch_3d_silhouette():
+    u, v, w = symbols('u v w')
+    v = 1-u
+    w = 0
+    '''
+    Trying to get closed form solution for silhouette along
+    the u-v edge. But pluggin the above into differentiation
+    goes wrong of course.
+    '''
+
+    patch = triangular_patch_3d((u,v,w), 2)
+    patch_du = diff(patch, u)
+    patch_dv = diff(patch, v)
+
+    patch_normal = patch_du.cross(patch_dv)
+
+    print(patch_normal)
+
+    viewpoint = Matrix([0,0,0])
+    viewdir = patch - viewpoint
+
+    # silhouette = viewdir.dot(patch_normal)**2
+
+    # print(to_polynomial(expand(silhouette.subs(v, v).subs(w, w)), u))
+
+    # silhouette = silhouette.subs(v, 1-u).subs(w, 0)
+    # silhouette = diff(silhouette, u)
+    # silhouette = expand(silhouette)
+    # # silhouette = solveset(silhouette, u, domain=S.Reals)
+    # print(silhouette)
+
+    # common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
+    # print_code(common, exprs)
+
+def quadratic_triangular_patch_3d_silhouette_gradient():
+    u, v, w = symbols('u v w')
+    # w = 1 - u - v
+
+    patch = triangular_patch_3d((u,v,w), 2)
+    patch_du = diff(patch, u)
+    patch_dv = diff(patch, v)
+
+    patch_normal = patch_du.cross(patch_dv)
+
+    viewpoint = Matrix([0,0,0])
+    viewdir = patch - viewpoint
+
+    silhouette = viewdir.dot(patch_normal)**2
+
+    grad_u = diff(silhouette, u)
+    grad_v = diff(silhouette, v)
+
+    common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
+    print_code(common, exprs)
+
+def cubic_triangular_patch_3d_silhouette_gradient():
+    u, v, w = symbols('u v w')
+    # w = 1 - u - v
+
+    patch = triangular_patch_3d((u,v,w), 3)
+    patch_du = diff(patch, u)
+    patch_dv = diff(patch, v)
+
+    patch_normal = patch_du.cross(patch_dv)
+
+    viewpoint = Matrix([0,0,0])
+    viewdir = patch - viewpoint
+
+    silhouette = viewdir.dot(patch_normal)**2
+
+    grad_u = diff(silhouette, u)
+    grad_v = diff(silhouette, v)
+
+    common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
+    print_code(common, exprs)
 
 def diagonal_of_linear_patch():
     '''
@@ -1471,7 +1555,10 @@ def main():
     # prove_curve_derives()
     # prove_patch_derives()
 
-    quadratic_triangular_patch_3d()
+    # quadratic_triangular_patch_3d()
+    quadratic_triangular_patch_3d_silhouette()
+    # quadratic_triangular_patch_3d_silhouette_gradient()
+    # cubic_triangular_patch_3d_silhouette_gradient()
 
     # === Curvature min/max, inflectons ===
 
