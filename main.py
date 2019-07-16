@@ -1175,6 +1175,27 @@ def quartic_bezier_3d():
     # bases_d = bezier_bases(3, t)
     # pd = make_bezier_expr(points_d, bases_d)
 
+def trinomial(n,i,j,k):
+    return math.factorial(n) / (math.factorial(i) * math.factorial(j) * math.factorial(k))
+
+def quadratic_triangular_patch_3d():
+    degree = 2
+    u, v, w = symbols('u v w')
+
+    patch = []
+
+    for i in range(0, degree+1):
+        for j in range(0, degree+1):
+            for k in range(0, degree+1):
+                if (i+j+k != degree):
+                    continue
+         
+                tri = trinomial(degree,i,j,k)
+                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j,k)) * tri * (u**i * v**j * w**k)
+                print(p_ijk)
+                patch.append(p_ijk)
+
+
 def diagonal_of_linear_patch():
     '''
     Essentially: bilinear interpolation across a quad
@@ -1450,6 +1471,8 @@ def main():
     # prove_curve_derives()
     # prove_patch_derives()
 
+    quadratic_triangular_patch_3d()
+
     # === Curvature min/max, inflectons ===
 
     # maxima_1st_cubic_2d()
@@ -1480,7 +1503,7 @@ def main():
     # silhouette_quadratic_3d_doubledot()
 
     # silhouette_quadratic_3d_gradient_wrt_embedded_cubic()
-    silhouette_quadratic_3d_gradient_wrt_embedded_cubic_tangents()
+    # silhouette_quadratic_3d_gradient_wrt_embedded_cubic_tangents()
 
     # silhouette_quadratic_3d_quadratic_normals()    
 
