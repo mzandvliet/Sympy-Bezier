@@ -1177,6 +1177,25 @@ def quartic_bezier_3d():
 def trinomial(n,i,j,k):
     return math.factorial(n) / (math.factorial(i) * math.factorial(j) * math.factorial(k))
 
+'''
+Todo:
+I don't understand a specific thing:
+We're generating, I think, in the exact same way that PN triangle paper suggests,
+yet for [i,j,k] = [3,0,0] the get term:
+
+p300*w^3
+
+whereas I get:
+p300*u^3
+
+Because u^i...
+
+Why? Might be a printing mistake or something.
+
+With ijk cycled backwards one tick, I get:
+(symbols[0]**j * symbols[1]**k * symbols[2]**i)
+The results of which match the paper. Meh.
+'''
 def triangular_patch_3d(symbols, degree):
     patch = Matrix([0,0,0])
 
@@ -1187,7 +1206,37 @@ def triangular_patch_3d(symbols, degree):
                     continue
          
                 tri = trinomial(degree,i,j,k)
-                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
+                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j,k)) * tri * (symbols[0]**j * symbols[1]**k * symbols[2]**i)
+                patch += p_ijk
+
+    return patch
+
+def triangular_patch_3d_du(symbols, degree):
+    patch = Matrix([0,0,0])
+
+    for i in range(0, degree):
+        for j in range(0, degree):
+            for k in range(0, degree):
+                if (i+j+k != degree-1):
+                    continue
+         
+                tri = trinomial(degree,i,j,k)
+                p_ijk = symbolic_vector_3d('p%i%i%i'%(i+1,j,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
+                patch += p_ijk
+
+    return patch
+
+def triangular_patch_3d_dv(symbols, degree):
+    patch = Matrix([0,0,0])
+
+    for i in range(0, degree):
+        for j in range(0, degree):
+            for k in range(0, degree):
+                if (i+j+k != degree-1):
+                    continue
+         
+                tri = trinomial(degree,i,j,k)
+                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j+1,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
                 patch += p_ijk
 
     return patch
@@ -1197,45 +1246,43 @@ def quadratic_triangular_patch_3d():
     # w = 1 - u - v
 
     patch = triangular_patch_3d((u,v,w), 2)
-    patch_du = diff(patch, u)
-    patch_dv = diff(patch, v)
-
-    patch_normal = patch_du.cross(patch_dv)
-
-    print(patch_normal[0])
+    pprint(diff(patch, u) - triangular_patch_3d_du((u,v,w), 2))
 
 def quadratic_triangular_patch_3d_silhouette():
     u, v, w = symbols('u v w')
-    v = 1-u
-    w = 0
+    # v = 1-u
+    # w = 0
     '''
     Trying to get closed form solution for silhouette along
     the u-v edge. But pluggin the above into differentiation
     goes wrong of course.
+
+    with prepared du & dv patches for tangent calculations,
+    this would work.
     '''
 
     patch = triangular_patch_3d((u,v,w), 2)
-    patch_du = diff(patch, u)
-    patch_dv = diff(patch, v)
+    patch_du = triangular_patch_3d_du((u, v, w), 2)
+    patch_dv = triangular_patch_3d_dv((u, v, w), 2)
 
     patch_normal = patch_du.cross(patch_dv)
+    pprint(patch_du)
 
-    print(patch_normal)
-
-    viewpoint = Matrix([0,0,0])
-    viewdir = patch - viewpoint
+    # viewpoint = Matrix([0,0,0])
+    # viewdir = patch - viewpoint
 
     # silhouette = viewdir.dot(patch_normal)**2
-
-    # print(to_polynomial(expand(silhouette.subs(v, v).subs(w, w)), u))
-
-    # silhouette = silhouette.subs(v, 1-u).subs(w, 0)
     # silhouette = diff(silhouette, u)
-    # silhouette = expand(silhouette)
-    # # silhouette = solveset(silhouette, u, domain=S.Reals)
+    # silhouette = solveset(silhouette, u, domain=S.Reals)
     # print(silhouette)
 
-    # common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
+    # solutions = list(map(lambda s: s.subs(v, 1-u).subs(w, 0), silhouette))
+
+    # silhouette = silhouette.subs(v, 1-u).subs(w, 0)
+    # silhouette = simplify(silhouette)
+    # print(solutions[0])
+
+    # common, exprs = cse(silhouette, numbered_symbols('a'))
     # print_code(common, exprs)
 
 def quadratic_triangular_patch_3d_silhouette_gradient():
@@ -1258,6 +1305,14 @@ def quadratic_triangular_patch_3d_silhouette_gradient():
 
     common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
     print_code(common, exprs)
+
+
+def cubic_triangular_patch_3d():
+    u, v, w = symbols('u v w')
+
+    patch = triangular_patch_3d((u, v, w), 3)
+    # pprint(patch, use_unicode=True, num_columns=140)
+    pprint(diff(patch, u), use_unicode=True, num_columns=140)
 
 def cubic_triangular_patch_3d_silhouette_gradient():
     u, v, w = symbols('u v w')
@@ -1545,7 +1600,27 @@ def prove_patch_derives():
     difference = expand(normals_a[0]) - expand(normals_b[0])
     pprint(difference)
 
+def bezier_log():
+    # Exploring relationships between bezier curves and logarithms
+    # Todo: projective
+    x = symbols('x')
+    p0 = Matrix([0,     0])
+    p1 = Matrix([256,   0])
+    p2 = Matrix([256,   256])
+    points = (p0, p1, p2)
+    bases = bezier_bases(2, x)
+    bez2_x = make_bezier(points, bases)(x)[0] / 32
+    bez2_x = bez2_x.subs(x, x/256)
+
+    pprint(bez2_x)
+
+    log2_x = log(x, 2)
+
+    graph = plot(log2_x, bez2_x, (x, 1, 256))
+
 def main():
+    init_printing(pretty_print=True, use_unicode=True, num_columns=180)
+    
     # === Evaluating Curves & Surfaces ===
 
     # quadratic_2d_bezier()
@@ -1556,8 +1631,10 @@ def main():
     # prove_patch_derives()
 
     # quadratic_triangular_patch_3d()
-    quadratic_triangular_patch_3d_silhouette()
+    # quadratic_triangular_patch_3d_silhouette()
     # quadratic_triangular_patch_3d_silhouette_gradient()
+
+    # cubic_triangular_patch_3d()
     # cubic_triangular_patch_3d_silhouette_gradient()
 
     # === Curvature min/max, inflectons ===
@@ -1606,7 +1683,10 @@ def main():
 
     # ballistics()
     # ballistics_bezier()
+    
+    # Log
 
+    bezier_log()
 
 if __name__ == "__main__":
     main()
