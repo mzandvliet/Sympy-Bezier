@@ -37,6 +37,7 @@ def solve_quadratic(expr, t):
 
 ''' Some Linear Algebra helpers'''
 
+# Todo: make a generic n-dim symbolic vector maker which you pass list of basis symbols
 def symbolic_vector_2d(name):
     bases = ('x', 'y')
     bases = map(lambda c: name + "_" + c + ", ", bases)

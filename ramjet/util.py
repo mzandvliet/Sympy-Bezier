@@ -95,6 +95,15 @@ def replace_vector_vars(code):
     Replace each with 'curve[*].*'
     '''
 
+    tri_indices = {
+        "002" : 0,
+        "011" : 1,
+        "020" : 2,
+        "101" : 3,
+        "110" : 4,
+        "200" : 5,
+    }
+
     xyz = ['x', 'y', 'z']
 
     pos = 0
@@ -104,21 +113,34 @@ def replace_vector_vars(code):
             break
 
         if code[pos+1] in xyz and code[pos-1].isdigit():
-            idx = int(code[pos-1])
-            idx -= 1
+            if not code[pos-2].isdigit():
+                # Quad point indexing, e.g. p0_x -> p[0].x
+                idx = int(code[pos-1])
+                idx -= 1
 
-            name_start = find_identifier_backwards_from(code, pos-2)
-            name = code[name_start:pos-1]
+                name_start = find_identifier_backwards_from(code, pos-2)
+                name = code[name_start:pos-1]
 
-            code = code[0:name_start] + name + "[" + str(idx) + "]." + code[pos+1:]
+                code = code[0:name_start] + name + "[" + str(idx) + "]." + code[pos+1:]
+            else:
+                # Triangle point indexing, e.g. p101_x -> p[3]
+                # Todo: don't assume it is a quadratic triangle...
+
+                idxString = code[pos-3:pos]
+                idx = tri_indices[idxString]
+
+                name_start = find_identifier_backwards_from(code, pos-1)
+                name = code[name_start:name_start+1]
+
+                code = code[0:name_start] + name + "[" + str(idx) + "]." + code[pos+1:]
         else:
             pos += 1
     return code
 
 def find_identifier_backwards_from(code, end):
     for i in range(end, -1, -1):
-        if not code[i].isalpha():
-            return i+1
+        if code[i].isalpha():
+            return i
     return 0
 
 def format_floats(code):

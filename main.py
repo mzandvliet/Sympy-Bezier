@@ -1128,10 +1128,10 @@ def quadratic_patch_3d_normals():
     tangent_v = diff(pos, v)
     normal = tangent_u.cross(tangent_v)
 
-    pprint(normal[0])
+    # pprint(normal[0])
 
-    # common, exprs = cse(normal, numbered_symbols('a'))
-    # print_code(common, exprs)
+    common, exprs = cse(normal, numbered_symbols('a'))
+    print_code(common, exprs)
 
 def quadratic_2d_bezier():
     symbs = symbols('t, p1, p2, p3')
@@ -1206,7 +1206,24 @@ def triangular_patch_3d(symbols, degree):
                     continue
          
                 tri = trinomial(degree,i,j,k)
-                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j,k)) * tri * (symbols[0]**j * symbols[1]**k * symbols[2]**i)
+                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
+                print('p%i%i%i'%(i,j,k))
+                patch += p_ijk
+
+    return patch
+
+def triangular_patch_4d(symbols, degree):
+    patch = Matrix([0,0,0,0])
+
+    for i in range(0, degree+1):
+        for j in range(0, degree+1):
+            for k in range(0, degree+1):
+                if (i+j+k != degree):
+                    continue
+         
+                tri = trinomial(degree,i,j,k)
+                p_ijk = symbolic_vector_4d('p%i%i%i'%(i,j,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
+                print('p%i%i%i'%(i,j,k))
                 patch += p_ijk
 
     return patch
@@ -1241,7 +1258,31 @@ def triangular_patch_3d_dv(symbols, degree):
 
     return patch
 
+def triangular_patch_4d(symbols, degree):
+    patch = Matrix([0, 0, 0, 0])
+
+    for i in range(0, degree+1):
+        for j in range(0, degree+1):
+            for k in range(0, degree+1):
+                if (i+j+k != degree):
+                    continue
+
+                tri = trinomial(degree, i, j, k)
+                p_ijk = symbolic_vector_4d('p%i%i%i' % (i, j, k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
+                patch += p_ijk
+
+    return patch
+
 def quadratic_triangular_patch_3d():
+    u, v, w = symbols('u v w')
+    # w = 1 - u - v
+
+    patch = triangular_patch_3d((u, v, w), 2)
+
+    common, exprs = cse(patch, numbered_symbols('a'))
+    print_code(common, exprs)
+
+def quadratic_triangular_patch_3d_prove_derivatives():
     u, v, w = symbols('u v w')
     # w = 1 - u - v
 
@@ -1306,6 +1347,30 @@ def quadratic_triangular_patch_3d_silhouette_gradient():
     common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
     print_code(common, exprs)
 
+
+def quadratic_rational_triangular_patch_3d():
+    u, v, w = symbols('u v w')
+
+    patch = triangular_patch_3d((u, v, w), 2)
+    # pprint(patch, use_unicode=True, num_columns=140)
+    pprint(diff(patch, u), use_unicode=True, num_columns=140)
+
+def quadratic_rational_triangular_patch_3d_rational():
+    u, v, w, t = symbols('u v w t')
+
+    patch = triangular_patch_4d((u, v, w), 2)
+
+    uvw1 = symbolic_vector_3d('uvw1')
+    uvw2 = symbolic_vector_3d('uvw2')
+    uvw1[2] = 1 - uvw1[0] - uvw1[1]
+    uvw2[2] = 1 - uvw2[0] - uvw2[1]
+    bases_uv = bezier_bases(1, t)
+    uvw = make_bezier((uvw1, uvw2), bases_uv)(t)
+
+    p = patch.subs(u, uvw[0]).subs(v, uvw[1]).subs(w, uvw[2])
+
+    common, exprs = cse(p, numbered_symbols('a'))
+    print_code(common, exprs)
 
 def cubic_triangular_patch_3d():
     u, v, w = symbols('u v w')
@@ -1631,8 +1696,10 @@ def main():
     # prove_patch_derives()
 
     # quadratic_triangular_patch_3d()
+    # quadratic_triangular_patch_3d_prove_derivatives()
     # quadratic_triangular_patch_3d_silhouette()
     # quadratic_triangular_patch_3d_silhouette_gradient()
+    quadratic_rational_triangular_patch_3d_rational()
 
     # cubic_triangular_patch_3d()
     # cubic_triangular_patch_3d_silhouette_gradient()
@@ -1649,7 +1716,7 @@ def main():
     # inflections_cubic_3d()
     # curvature_maxima_3d()    
 
-    # === Silhouette finding ===
+    # === Quad Silhouette finding ===
 
     # silhouette_cubic_2d()
     # silhouette_quadratic_2d()
@@ -1686,7 +1753,7 @@ def main():
     
     # Log
 
-    bezier_log()
+    # bezier_log()
 
 if __name__ == "__main__":
     main()
