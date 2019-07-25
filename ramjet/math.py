@@ -37,26 +37,33 @@ def solve_quadratic(expr, t):
 
 ''' Some Linear Algebra helpers'''
 
-# Todo: make a generic n-dim symbolic vector maker which you pass list of basis symbols
+BASIS_1D = ['x']
+BASIS_2D = ['x', 'y']
+BASIS_3D = ['x', 'y', 'z']
+BASIS_4D = ['x', 'y', 'z', 'w']
+
+def symbolic_vector(name, basis):
+    bases = map(lambda c: name + "_" + c + ", ", basis)
+    bases = reduce(lambda a, b: a + b, bases)
+    return Matrix(symbols(bases))
+
 def symbolic_vector_2d(name):
     bases = ('x', 'y')
-    bases = map(lambda c: name + "_" + c + ", ", bases)
+    bases = map(lambda c: name + "_" + c + ", ", BASIS_2D)
     bases = reduce(lambda a, b: a + b, bases)
     x, y = symbols(bases)
     return Matrix([x, y])
 
 
 def symbolic_vector_3d(name):
-    bases = ('x', 'y', 'z')
-    bases = map(lambda c: name + "_" + c + ", ", bases)
+    bases = map(lambda c: name + "_" + c + ", ", BASIS_3D)
     bases = reduce(lambda a, b: a + b, bases)
     x, y, z = symbols(bases)
     return Matrix([x, y, z])
 
 
 def symbolic_vector_4d(name):
-    bases = ('x', 'y', 'z', 'w')
-    bases = map(lambda c: name + "_" + c + ", ", bases)
+    bases = map(lambda c: name + "_" + c + ", ", BASIS_4D)
     bases = reduce(lambda a, b: a + b, bases)
     x, y, z, w = symbols(bases)
     return Matrix([x, y, z, w])

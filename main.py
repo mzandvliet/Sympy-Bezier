@@ -1196,8 +1196,8 @@ With ijk cycled backwards one tick, I get:
 (symbols[0]**j * symbols[1]**k * symbols[2]**i)
 The results of which match the paper. Meh.
 '''
-def triangular_patch_3d(symbols, degree):
-    patch = Matrix([0,0,0])
+def triangular_patch(symbols, degree, basis):
+    patch = Matrix([0]*len(basis))
 
     for i in range(0, degree+1):
         for j in range(0, degree+1):
@@ -1206,14 +1206,16 @@ def triangular_patch_3d(symbols, degree):
                     continue
          
                 tri = trinomial(degree,i,j,k)
-                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
-                print('p%i%i%i'%(i,j,k))
+                p_ijk = symbolic_vector('p%i%i%i'%(i,j,k), basis) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
                 patch += p_ijk
 
     return patch
 
-def triangular_patch_4d(symbols, degree):
-    patch = Matrix([0,0,0,0])
+def triangular_patch_with_points(points, symbols, degree):
+    dimensions = points[0].shape[0]
+    patch = Matrix([0]*dimensions)
+
+    pointIdx = 0
 
     for i in range(0, degree+1):
         for j in range(0, degree+1):
@@ -1222,8 +1224,8 @@ def triangular_patch_4d(symbols, degree):
                     continue
          
                 tri = trinomial(degree,i,j,k)
-                p_ijk = symbolic_vector_4d('p%i%i%i'%(i,j,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
-                print('p%i%i%i'%(i,j,k))
+                p_ijk = points[pointIdx] * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
+                pointIdx += 1
                 patch += p_ijk
 
     return patch
@@ -1258,26 +1260,11 @@ def triangular_patch_3d_dv(symbols, degree):
 
     return patch
 
-def triangular_patch_4d(symbols, degree):
-    patch = Matrix([0, 0, 0, 0])
-
-    for i in range(0, degree+1):
-        for j in range(0, degree+1):
-            for k in range(0, degree+1):
-                if (i+j+k != degree):
-                    continue
-
-                tri = trinomial(degree, i, j, k)
-                p_ijk = symbolic_vector_4d('p%i%i%i' % (i, j, k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
-                patch += p_ijk
-
-    return patch
-
 def quadratic_triangular_patch_3d():
     u, v, w = symbols('u v w')
     # w = 1 - u - v
 
-    patch = triangular_patch_3d((u, v, w), 2)
+    patch = triangular_patch((u, v, w), 2, BASIS_3D)
 
     common, exprs = cse(patch, numbered_symbols('a'))
     print_code(common, exprs)
@@ -1286,7 +1273,7 @@ def quadratic_triangular_patch_3d_prove_derivatives():
     u, v, w = symbols('u v w')
     # w = 1 - u - v
 
-    patch = triangular_patch_3d((u,v,w), 2)
+    patch = triangular_patch((u, v, w), 2, BASIS_3D)
     pprint(diff(patch, u) - triangular_patch_3d_du((u,v,w), 2))
 
 def quadratic_triangular_patch_3d_silhouette():
@@ -1302,7 +1289,7 @@ def quadratic_triangular_patch_3d_silhouette():
     this would work.
     '''
 
-    patch = triangular_patch_3d((u,v,w), 2)
+    patch = triangular_patch((u,v,w), 2, BASIS_3D)
     patch_du = triangular_patch_3d_du((u, v, w), 2)
     patch_dv = triangular_patch_3d_dv((u, v, w), 2)
 
@@ -1330,7 +1317,7 @@ def quadratic_triangular_patch_3d_silhouette_gradient():
     u, v, w = symbols('u v w')
     # w = 1 - u - v
 
-    patch = triangular_patch_3d((u,v,w), 2)
+    patch = triangular_patch((u, v, w), 2, BASIS_3D)
     patch_du = diff(patch, u)
     patch_dv = diff(patch, v)
 
@@ -1351,23 +1338,61 @@ def quadratic_triangular_patch_3d_silhouette_gradient():
 def quadratic_rational_triangular_patch_3d():
     u, v, w = symbols('u v w')
 
-    patch = triangular_patch_3d((u, v, w), 2)
+    patch = triangular_patch((u, v, w), 2, BASIS_3D)
     # pprint(patch, use_unicode=True, num_columns=140)
     pprint(diff(patch, u), use_unicode=True, num_columns=140)
 
-def quadratic_rational_triangular_patch_3d_rational():
+def quadratic_rational_triangular_patch_3d_embedded_line():
+    '''
+    Full euclidean 3d evaluation of embedded linear
+    segment. Had presumed this to be a geodesic
+    on the sphere in case of rational octant, but
+    the general result is a quartic.
+    '''
     u, v, w, t = symbols('u v w t')
 
-    patch = triangular_patch_4d((u, v, w), 2)
+    patch = triangular_patch((u, v, w), 2, BASIS_4D)
 
     uvw1 = symbolic_vector_3d('uvw1')
     uvw2 = symbolic_vector_3d('uvw2')
-    uvw1[2] = 1 - uvw1[0] - uvw1[1]
-    uvw2[2] = 1 - uvw2[0] - uvw2[1]
+    # uvw1[2] = 1 - uvw1[0] - uvw1[1]
+    # uvw2[2] = 1 - uvw2[0] - uvw2[1]
     bases_uv = bezier_bases(1, t)
     uvw = make_bezier((uvw1, uvw2), bases_uv)(t)
 
     p = patch.subs(u, uvw[0]).subs(v, uvw[1]).subs(w, uvw[2])
+    poly = to_polynomial(p[0], t)
+    print("Got polynomial of degree: %i" % (poly.degree()))
+    # pprint(expand(p[0]))
+
+    common, exprs = cse(p, numbered_symbols('a'))
+    print_code(common, exprs)
+
+
+def quadratic_rational_sphere_octant_3d_embedded_line():
+    u, v, w, t = symbols('u v w t')
+
+    #halfsqrt2 = Rational(1,2) * 2**Rational(1,2)
+    halfsqrt2 = Rational(1,1);
+    patch = triangular_patch_with_points([
+        Matrix([0, 0, 1, 1]), # 002
+        Matrix([0, 1, 1, 1]) * halfsqrt2,  # 011
+        Matrix([0, 1, 0, 1]),  # 020
+        Matrix([1, 0, 1, 1]) * halfsqrt2, # 101
+        Matrix([1, 1, 0, 1]) * halfsqrt2,  # 110
+        Matrix([1, 0, 0, 1]),  # 200
+    ], (u,v,w), 2)
+
+    uvw1 = symbolic_vector_3d('uvw1')
+    uvw2 = symbolic_vector_3d('uvw2')
+    # uvw1[2] = 1 - uvw1[0] - uvw1[1]
+    # uvw2[2] = 1 - uvw2[0] - uvw2[1]
+    bases_uv = bezier_bases(1, t)
+    uvw = make_bezier((uvw1, uvw2), bases_uv)(t)
+
+    p = patch.subs(u, uvw[0]).subs(v, uvw[1]).subs(w, uvw[2])
+    poly = to_polynomial(p[0], t)
+    print("Got polynomial of degree: %i"%(poly.degree()))
 
     common, exprs = cse(p, numbered_symbols('a'))
     print_code(common, exprs)
@@ -1375,7 +1400,7 @@ def quadratic_rational_triangular_patch_3d_rational():
 def cubic_triangular_patch_3d():
     u, v, w = symbols('u v w')
 
-    patch = triangular_patch_3d((u, v, w), 3)
+    patch = triangular_patch((u, v, w), 3, BASIS_3D)
     # pprint(patch, use_unicode=True, num_columns=140)
     pprint(diff(patch, u), use_unicode=True, num_columns=140)
 
@@ -1383,7 +1408,7 @@ def cubic_triangular_patch_3d_silhouette_gradient():
     u, v, w = symbols('u v w')
     # w = 1 - u - v
 
-    patch = triangular_patch_3d((u,v,w), 3)
+    patch = triangular_patch((u, v, w), 3, BASIS_3D)
     patch_du = diff(patch, u)
     patch_dv = diff(patch, v)
 
@@ -1699,7 +1724,9 @@ def main():
     # quadratic_triangular_patch_3d_prove_derivatives()
     # quadratic_triangular_patch_3d_silhouette()
     # quadratic_triangular_patch_3d_silhouette_gradient()
-    quadratic_rational_triangular_patch_3d_rational()
+    # quadratic_rational_triangular_patch_3d()
+    quadratic_rational_triangular_patch_3d_embedded_line()
+    quadratic_rational_sphere_octant_3d_embedded_line()
 
     # cubic_triangular_patch_3d()
     # cubic_triangular_patch_3d_silhouette_gradient()
