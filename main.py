@@ -1394,7 +1394,79 @@ def quadratic_rational_sphere_octant_3d_embedded_line():
     poly = to_polynomial(p[0], t)
     print("Got polynomial of degree: %i"%(poly.degree()))
 
-    common, exprs = cse(p, numbered_symbols('a'))
+    pprint(p[0])
+
+    # common, exprs = cse(p, numbered_symbols('a'))
+    # print_code(common, exprs)
+
+
+def quadratic_rational_sphere_octant_3d_norm_proof():
+    '''
+    Here we check the magnitude of the vector we
+    get in the center. All vectors we get should
+    have unit norm, of course. But!
+
+    0.37037037037037⋅√2 + 0.666666666666667 == ~1.19
+
+    So evidently, we do not actually have a sphere here.
+    '''
+    u, v, w = symbols('u v w')
+
+    u = Rational(1,3)
+    v = Rational(1,3)
+    w = 1 - u - v
+
+    halfsqrt2 = Rational(1,2) * 2**Rational(1,2)
+    patch = triangular_patch_with_points([
+        Matrix([0, 0, 1, 1]),  # 002
+        Matrix([0, 1, 1, 1]) * halfsqrt2,  # 011
+        Matrix([0, 1, 0, 1]),  # 020
+        Matrix([1, 0, 1, 1]) * halfsqrt2,  # 101
+        Matrix([1, 1, 0, 1]) * halfsqrt2,  # 110
+        Matrix([1, 0, 0, 1]),  # 200
+    ], (u, v, w), 2)
+
+    norm = expand(patch.dot(patch))
+
+    pprint(norm)
+
+def quadratic_rational_triangular_patch_3d_geodesic_gradient():
+    '''
+    Starting from a random curve, give dControls/GeodesicError,
+    such that we can numerically find geodesics
+    '''
+    u, v, w, t = symbols('u v w t')
+
+    patch = triangular_patch((u, v, w), 2, BASIS_4D)
+
+    uvw1 = symbolic_vector_3d('uvw1')
+    uvw2 = symbolic_vector_3d('uvw2')
+    uvw3 = symbolic_vector_3d('uvw3')
+
+    bases_uv = bezier_bases(2, t)
+    uvw = make_bezier((uvw1, uvw2, uvw3), bases_uv)(t)
+
+    p = patch.subs(u, uvw[0]).subs(v, uvw[1]).subs(w, uvw[2])
+
+    # Piecewise Euclidean quadrance, stepping along curve
+    # quadrance_steps = 8
+    # quadrance = Rational(0,1)
+    # t_step = Rational(1, quadrance_steps)
+    # for i in range(0, quadrance_steps-1):
+    #     t_i = t_step * i
+    #     p_delta = p.subs(t, t_i+t_step) - p.subs(t, t_i)
+    #     quadrance += p_delta.dot(p_delta)
+
+    # Quadrance based on control point chord distance 
+    uvw_delta1 = uvw2 - uvw1
+    uvw_delta2 = uvw3 - uvw2
+    quadrance = uvw_delta1.dot(uvw_delta1) + uvw_delta2.dot(uvw_delta2)
+
+    quadranceGradU = diff(quadrance, uvw2[0])
+    quadranceGradV = diff(quadrance, uvw2[1])
+    quadranceGradW = diff(quadrance, uvw2[2])
+
+    common, exprs = cse((quadranceGradU,quadranceGradV,quadranceGradW), numbered_symbols('a'))
     print_code(common, exprs)
 
 def cubic_triangular_patch_3d():
@@ -1725,8 +1797,10 @@ def main():
     # quadratic_triangular_patch_3d_silhouette()
     # quadratic_triangular_patch_3d_silhouette_gradient()
     # quadratic_rational_triangular_patch_3d()
-    quadratic_rational_triangular_patch_3d_embedded_line()
-    quadratic_rational_sphere_octant_3d_embedded_line()
+    # quadratic_rational_triangular_patch_3d_embedded_line()
+    # quadratic_rational_sphere_octant_3d_embedded_line()
+    # quadratic_rational_triangular_patch_3d_geodesic_gradient()
+    quadratic_rational_sphere_octant_3d_norm_proof()
 
     # cubic_triangular_patch_3d()
     # cubic_triangular_patch_3d_silhouette_gradient()

@@ -37,10 +37,11 @@ def solve_quadratic(expr, t):
 
 ''' Some Linear Algebra helpers'''
 
-BASIS_1D = ['x']
-BASIS_2D = ['x', 'y']
-BASIS_3D = ['x', 'y', 'z']
 BASIS_4D = ['x', 'y', 'z', 'w']
+BASIS_1D =      ['x']
+BASIS_2D =      ['x', 'y']
+BASIS_3D =      ['x', 'y', 'z']
+BASIS_4D =      ['x', 'y', 'z', 'w']
 
 def symbolic_vector(name, basis):
     bases = map(lambda c: name + "_" + c + ", ", basis)
