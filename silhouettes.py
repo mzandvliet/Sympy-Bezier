@@ -5,28 +5,9 @@ from functools import reduce
 from ramjet.math import *
 from ramjet.util import *
 
-'''
-Todo:
-
-- Use sub-curve evaluation start of tensor patches for efficiency, and possibly a drop of degree
-- Instead of dot(viewdir,normal), can we derive same info from dot(viewdir,tangent) + dot(viewdir,cotangent)?
-- 2nd derivatives for gradient information available? would make for super-fast convergence
-- Vector field approaches for high-degree problems (will help with lighting)
-- Bezier point-mass distributions, and their equations of motion
-
-'''
-
-# Assume a given cubic curve starts at [0,0] and ends at [x,0]
-# leads to x1, y1, y2 = 0
-def to_oriented_curve_2d(expr):
-    x1, y1, y4 = symbols('x1, y1, y4')
-    expr_subbed = expr \
-        .subs(x1, 0) \
-        .subs(y1, 0) \
-        .subs(y4, 0)
-
-    return (expr_subbed)
-
+def set_to_zero(symbs, expr):
+    subs = { k: v for k, v in map(lambda s: [s, 0], symbs) }
+    return expr.subs(subs)
 
 def to_oriented_cubic_curve_3d_xyz(expr):
     x1, y1, z1, y4, z4 = symbols('x1, y1, z1, y4, z4')
@@ -38,373 +19,6 @@ def to_oriented_cubic_curve_3d_xyz(expr):
         .subs(z4, 0) \
 
     return (expr_subbed)
-
-
-def set_to_zero(symbs, expr):
-    subs = { k: v for k, v in map(lambda s: [s, 0], symbs) }
-    return expr.subs(subs)
-
-# Replace repeaded terms with variable names to emphasize their cachable nature
-#
-# todo: This is redundant, could probably use cse()
-# https://docs.sympy.org/latest/modules/rewriting.html
-#
-# or: at least generalize by matching scalar * scalar
-# https: // docs.sympy.org/latest/modules/utilities/iterables.html
-def cache_variables(symbs, expr):
-    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
-
-    sub_symbs = symbols('a b c d')
-    a, b, c, d = sub_symbs
-
-    substitutions = {
-        a: x3 * y2,
-        b: x4 * y2,
-        c: x2 * y3,
-        d: x4 * y3
-    }
-
-    substitutions_inv = { v: k for k, v in substitutions.items() }
-
-    expr_subbed = expr.subs(substitutions_inv)
-
-    new_symbs = symbs + sub_symbs
-    return (new_symbs, expr_subbed, substitutions)
-
-def substitute_coeffs(expr):
-    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
-    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
-    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
-    t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
-    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
-    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
-
-    substitutions = {
-        xd1: 3 * (x2 - x1),
-        xd2: 3 * (x3 - x2),
-        xd3: 3 * (x4 - x3),
-        yd1: 3 * (y2 - y1),
-        yd2: 3 * (y3 - y2),
-        yd3: 3 * (y4 - y3),
-        zd1: 3 * (z2 - z1),
-        zd2: 3 * (z3 - z2),
-        zd3: 3 * (z4 - z3),
-        xdd1: 2 * (xd2 - xd1),
-        xdd2: 2 * (xd3 - xd2),
-        ydd1: 2 * (yd2 - yd1),
-        ydd2: 2 * (yd3 - yd2),
-        zdd1: 2 * (zd2 - zd1),
-        zdd2: 2 * (zd3 - zd2)
-    }
-
-    # recursively replace xddi -> xdi -> xi
-    for l in range(0, 2):
-        expr = expr.subs(substitutions)
-
-    return expr
-
-def bezier_curvature_2d():
-    symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4')
-    t, x1, x2, x3, x4, y1, y2, y3, y4 = symbs
-
-    a = 3 * (x2 - x1)
-    b = 3 * (x3 - x2)
-    c = 3 * (x4 - x3)
-    u = 2 * (b - a)
-    v = 2 * (c - b)
-
-    d = 3 * (y2 - y1)
-    e = 3 * (y3 - y2)
-    f = 3 * (y4 - y3)
-    w = 2 * (e - d)
-    z = 2 * (f - e)
-
-    bases_1st_deriv = bezier_bases(2, t)
-    bases_2nd_deriv = bezier_bases(1, t)
-
-    points_x_1st = (a, b, c)
-    points_x_2nd = (u, v)
-    points_y_1st = (d, e, f)
-    points_y_2nd = (w, z)
-
-    bx1 = make_bezier(points_x_1st, bases_1st_deriv)
-    bx2 = make_bezier(points_x_2nd, bases_2nd_deriv)
-    by1 = make_bezier(points_y_1st, bases_1st_deriv)
-    by2 = make_bezier(points_y_2nd, bases_2nd_deriv)
-
-    curvature = bx1(t) * by2(t) - by1(t) * bx2(t)
-    result = expand(curvature)
-    return (symbs, result)
-
-def bezier_curvature_partials_3d():
-    t = symbols('t')
-
-    # Using the below, I get quadratics
-
-    # symbs = symbols('t x1 x2 x3 x4 y1 y2 y3 y4 z1 z2 z3 z4')
-    # t, x1, x2, x3, x4, y1, y2, y3, y4, z1, z2, z3, z4 = symbs
-
-    # xd1 = 3 * (x2 - x1)
-    # xd2 = 3 * (x3 - x2)
-    # xd3 = 3 * (x4 - x3)
-    # xdd1 = 2 * (xd2 - xd1)
-    # xdd2 = 2 * (xd3 - xd2)
-
-    # yd1 = 3 * (y2 - y1)
-    # yd2 = 3 * (y3 - y2)
-    # yd3 = 3 * (y4 - y3)
-    # ydd1 = 2 * (yd2 - yd1)
-    # ydd2 = 2 * (yd3 - yd2)
-
-    # zd1 = 3 * (z2 - z1)
-    # zd2 = 3 * (z3 - z2)
-    # zd3 = 3 * (z4 - z3)
-    # zdd1 = 2 * (zd2 - zd1)
-    # zdd2 = 2 * (zd3 - zd2)
-
-    # using these though, I get cubics. Why? Something in the above that cancels automatically?
-
-    symbs_d = symbols('xd1 xd2 xd3 yd1 yd2 yd3 zd1 zd2 zd3')
-    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
-    xd1, xd2, xd3, yd1, yd2, yd3, zd1, zd2, zd3, = symbs_d
-    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
-
-    bases_d = bezier_bases(2, t)
-    bases_dd = bezier_bases(1, t)
-
-    points_x_d = (xd1, xd2, xd3)
-    points_y_d = (yd1, yd2, yd3)
-    points_z_d = (zd1, zd2, zd3)
-
-    points_x_dd = (xdd1, xdd2)
-    points_y_dd = (ydd1, ydd2)
-    points_z_dd = (zdd1, zdd2)
-
-    xd = make_bezier(points_x_d, bases_d)
-    yd = make_bezier(points_y_d, bases_d)
-    zd = make_bezier(points_z_d, bases_d)
-    xdd = make_bezier(points_x_dd, bases_dd)
-    ydd = make_bezier(points_y_dd, bases_dd)
-    zdd = make_bezier(points_z_dd, bases_dd)
-
-    # this gives us 3 polys, for potentially 6 roots
-
-    # N = CoordSys3D('N')
-    # b1 = bx1(t) * N.i + by1(t) * N.j + bz1(t) * N.j
-    # b2 = bx2(t) * N.i + by2(t) * N.j + bz2(t) * N.j
-    # curvature = cross(b2, b1)
-
-    # store resulting coefficients for each spatial basis separately
-    result = [
-        ydd(t) * zd(t) - zdd(t) * yd(t),
-        zdd(t) * xd(t) - xdd(t) * zd(t),
-        xdd(t) * yd(t) - ydd(t) * xd(t)
-    ]
-
-    return (t, result)
-
-def bezier_ddt_partials():
-    t = symbols('t')
-
-    symbs_dd = symbols('xdd1 xdd2 ydd1 ydd2 zdd1 zdd2')
-    xdd1, xdd2, ydd1, ydd2, zdd1, zdd2 = symbs_dd
-
-    bases_dd = bezier_bases(1, t)
-
-    points_x_dd = (xdd1, xdd2)
-    points_y_dd = (ydd1, ydd2)
-    points_z_dd = (zdd1, zdd2)
- 
-    xdd = make_bezier(points_x_dd, bases_dd)
-    ydd = make_bezier(points_y_dd, bases_dd)
-    zdd = make_bezier(points_z_dd, bases_dd)
-
-    result = [
-        xdd(t),
-        ydd(t),
-        zdd(t)
-    ]
-
-    return (t, result)
-
-def inflections_cubic_3d():
-    t = symbols('t')
-
-    p1 = symbolic_vector_3d('p1')
-    p2 = symbolic_vector_3d('p2')
-    p3 = symbolic_vector_3d('p3')
-    p4 = symbolic_vector_3d('p4')
-
-    points = [p1, p2, p3, p4]
-    points_d = differentiate_curve_points(points)
-    points_dd = differentiate_curve_points(points_d)
-
-    bases_d = bezier_bases(2, t)
-    bases_dd = bezier_bases(1, t)
-
-    pd = make_bezier(points_d, bases_d)
-    pdd = make_bezier(points_dd, bases_dd)
-
-    curvature = pd(t).cross(pdd(t))
-    curvature = expand(curvature)
-    solutions = map(lambda partial: solveset(partial, t).args[0], curvature)
-
-    common, exprs = cse(solutions, numbered_symbols('a'))
-
-    # print_pretty(common, exprs)
-    print_code(common, exprs)
-
-def curvature_maxima_3d():
-    t, exprs = bezier_curvature_partials_3d()
-
-    for i in range(0, len(exprs)):
-        exprs[i] = diff(exprs[i], t)
-        exprs[i] = substitute_coeffs(exprs[i])
-        # exprs[i] = to_oriented_curve_3d(exprs[i])
-        exprs[i] = simplify(exprs[i])
-
-    a = solveset(exprs[0], t)
-    b = solveset(exprs[1], t)
-    c = solveset(exprs[2], t)
-    common, exprs = cse([a, b, c], numbered_symbols('a'))
-
-    # print_pretty(common, exprs)
-    print_code(common, exprs)
-
-
-def maxima_1st_cubic_2d():
-    t = symbols('t')
-
-    p1 = symbolic_vector_2d('p1')
-    p2 = symbolic_vector_2d('p2')
-    p3 = symbolic_vector_2d('p3')
-    p4 = symbolic_vector_2d('p4')
-
-    points = [p1, p2, p3, p4]
-    points_d = differentiate_curve_points(points)
-
-    bases_d = bezier_bases(2, t)
-
-    pd = make_bezier(points_d, bases_d)(t)
-    pd = expand(pd)
-
-    solutions = map(lambda partial: solveset(partial, t).args[0], pd)
-
-    common, exprs = cse(solutions, numbered_symbols('a'))
-
-    # print_pretty(common, exprs)
-    print_code(common, exprs)
-
-def maxima_2nd_cubic_2d():
-    t = symbols('t')
-
-    p1 = symbolic_vector_2d('p1')
-    p2 = symbolic_vector_2d('p2')
-    p3 = symbolic_vector_2d('p3')
-    p4 = symbolic_vector_2d('p4')
-
-    points = [p1, p2, p3, p4]
-    points_d = differentiate_curve_points(points)
-    points_dd = differentiate_curve_points(points_d)
-
-    bases_dd = bezier_bases(1, t)
-
-    pdd = make_bezier(points_dd, bases_dd)(t)
-    pdd = expand(pdd)
-
-    solutions = map(lambda partial: solveset(partial,t).args[0], pdd)
-
-    common, exprs = cse(solutions, numbered_symbols('a'))
-
-    # print_pretty(common, exprs)
-    print_code(common, exprs)
-
-def inflections_cubic_2d():
-    t = symbols('t')
-
-    p1 = symbolic_vector_2d('p1')
-    p2 = symbolic_vector_2d('p2')
-    p3 = symbolic_vector_2d('p3')
-    p4 = symbolic_vector_2d('p4')
-
-    points = [p1, p2, p3, p4]
-    points_d = differentiate_curve_points(points)
-    points_dd = differentiate_curve_points(points_d)
-
-    bases_d = bezier_bases(2, t)
-    bases_dd = bezier_bases(1, t)
-
-    pd = make_bezier(points_d, bases_d)
-    pdd = make_bezier(points_dd, bases_dd)
-
-    curvature = cross_2d(pd(t), pdd(t))
-    curvature = expand(curvature)
-
-    a = solveset(Eq(curvature,0), t)
-
-    common, exprs = cse(a, numbered_symbols('a'))
-
-    # print_pretty(common, exprs)
-    print_code(common, exprs)
-
-def inflections_deriv_cubic_2d():
-    t = symbols('t')
-
-    p1 = symbolic_vector_2d('p1')
-    p2 = symbolic_vector_2d('p2')
-    p3 = symbolic_vector_2d('p3')
-    p4 = symbolic_vector_2d('p4')
-
-    points = [p1, p2, p3, p4]
-    points_d = differentiate_curve_points(points)
-    points_dd = differentiate_curve_points(points_d)
-
-    bases_d = bezier_bases(2, t)
-    bases_dd = bezier_bases(1, t)
-
-    pd = make_bezier(points_d, bases_d)
-    pdd = make_bezier(points_dd, bases_dd)
-
-    curvature = cross_2d(pd(t), pdd(t))
-    curvature = expand(curvature)
-
-    curvature_deriv = diff(curvature, t)
-
-    a = solveset(Eq(curvature_deriv, 0), t)
-
-    common, exprs = cse(a, numbered_symbols('a'))
-
-    # print_pretty(common, exprs)
-    print_code(common, exprs)
-
-def curvature_maxima_cubic_2d():
-    t = symbols('t')
-
-    p1 = symbolic_vector_2d('p1')
-    p2 = symbolic_vector_2d('p2')
-    p3 = symbolic_vector_2d('p3')
-    p4 = symbolic_vector_2d('p4')
-
-    p1 = Matrix([0,0])
-    p4[1] = 0
-
-    points = [p1, p2, p3, p4]
-    points_d = differentiate_curve_points(points)
-    points_dd = differentiate_curve_points(points_d)
-
-    bases_d = bezier_bases(2, t)
-    bases_dd = bezier_bases(1, t)
-
-    pd = make_bezier(points_d, bases_d)
-    pdd = make_bezier(points_dd, bases_dd)
-
-    # Full curvature definition: https://pomax.github.io/bezierinfo/#curvature
-
-    curvature = cross_2d(pd(t), pdd(t)) / (pd(t)[0]**2 + pd(t)[1]**2)**Rational(3/2)
-    curvature = simplify(curvature)
-    curv_dif = diff(curvature, t)
-
-    # this results in an absolutely soul-destroying mountain equation. Nevermind :P
 
 def silhouette_cubic_2d():
     t = symbols('t')
@@ -576,7 +190,7 @@ def silhouette_quadratic_projected_2d():
         [symbolic_vector_3d('normal1'), symbolic_vector_3d('normal2')],
         [symbolic_vector_3d('normal2'), symbolic_vector_3d('normal3')],
     ]
-    normal = make_patch(patch_n, u, v)
+    normal = make_bezier_patch_with_points(patch_n, u, v)
     normal[2] = 0
 
     viewpos = symbolic_vector_3d('viewpos')
@@ -611,7 +225,7 @@ def silhouette_quadratic_3d_gradient():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
    
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
 
     patch_du = [
         [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
@@ -623,8 +237,8 @@ def silhouette_quadratic_3d_gradient():
         [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
     ]
  
-    tangents_u = make_patch(patch_du, u, v)
-    tangents_v = make_patch(patch_dv, u, v)
+    tangents_u = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v = make_bezier_patch_with_points(patch_dv, u, v)
 
     normal = tangents_u.cross(tangents_v)
 
@@ -648,7 +262,7 @@ def silhouette_quadratic_3d_gradient_wrt_embedded_cubic():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
    
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
 
     patch_du = [
         [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
@@ -660,8 +274,8 @@ def silhouette_quadratic_3d_gradient_wrt_embedded_cubic():
         [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
     ]
  
-    tangents_u = make_patch(patch_du, u, v)
-    tangents_v = make_patch(patch_dv, u, v)
+    tangents_u = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v = make_bezier_patch_with_points(patch_dv, u, v)
 
     normal = tangents_u.cross(tangents_v)
 
@@ -699,7 +313,7 @@ def silhouette_quadratic_3d_gradient_wrt_embedded_cubic_tangents():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
    
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
 
     patch_du = [
         [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
@@ -711,8 +325,8 @@ def silhouette_quadratic_3d_gradient_wrt_embedded_cubic_tangents():
         [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
     ]
  
-    tangents_u = make_patch(patch_du, u, v)
-    tangents_v = make_patch(patch_dv, u, v)
+    tangents_u = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v = make_bezier_patch_with_points(patch_dv, u, v)
 
     normal = tangents_u.cross(tangents_v)
 
@@ -749,7 +363,7 @@ def silhouette_quadratic_3d_gradient_2nd():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
    
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
 
     patch_du = [
         [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
@@ -761,8 +375,8 @@ def silhouette_quadratic_3d_gradient_2nd():
         [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
     ]
  
-    tangents_u = make_patch(patch_du, u, v)
-    tangents_v = make_patch(patch_dv, u, v)
+    tangents_u = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v = make_bezier_patch_with_points(patch_dv, u, v)
 
     normal = tangents_u.cross(tangents_v)
 
@@ -794,7 +408,7 @@ def silhouette_quadratic_3d_edge():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
 
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
  
     patch_du = [
         [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
@@ -806,8 +420,8 @@ def silhouette_quadratic_3d_edge():
         [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
     ]
 
-    tangents_u = make_patch(patch_du, u, v)
-    tangents_v = make_patch(patch_dv, u, v)
+    tangents_u = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v = make_bezier_patch_with_points(patch_dv, u, v)
 
     normal = tangents_u.cross(tangents_v)
 
@@ -819,10 +433,14 @@ def silhouette_quadratic_3d_edge():
     solution = Eq(solution, 0)
     solution = solution.subs(v, 0)
     solution = expand(solution)
-    print(solution)
 
     poly = to_polynomial(solution, u)
     print("Got polynomial of degree: %i"%poly.degree())
+
+    solution_horned = horner(solution, wrt=u)
+    print("Horner solution:")
+    print(solution_horned)
+
     # 5th degree poly in u, so we need to find more clever workarounds
 
     # solution = solve(solution, u)
@@ -859,6 +477,9 @@ def silhouette_quadratic_3d_edge_u():
     viewdir = pos - viewpos
 
     solution = viewdir.dot(normal)
+    solution = expand(solution)
+    solution = simplify(solution)
+    # poly = to_polynomial(solution, )
     pprint(solution)
     '''
     Turns out that writing this specialized version yields the same
@@ -880,7 +501,7 @@ def silhouette_quadratic_3d_doubledot():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
 
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
  
     patch_du = [
         [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
@@ -894,8 +515,8 @@ def silhouette_quadratic_3d_doubledot():
     # patch_du = differentiate_patch_points_u(patch)
     # patch_dv = differentiate_patch_points_v(patch)
 
-    tangents_u = make_patch(patch_du, u, v)
-    tangents_v = make_patch(patch_dv, u, v)
+    tangents_u = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v = make_bezier_patch_with_points(patch_dv, u, v)
 
     viewpos = symbolic_vector_3d('viewPoint')
     viewpos = Matrix([0,0,0])
@@ -933,7 +554,7 @@ def silhouette_quadratic_3d_quadratic_normals():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
 
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
  
     patch_n = [
         [symbolic_vector_3d('n1'), symbolic_vector_3d('n2')],
@@ -941,7 +562,7 @@ def silhouette_quadratic_3d_quadratic_normals():
         [symbolic_vector_3d('n5'), symbolic_vector_3d('n6')]
     ]
 
-    normal = make_patch(patch_n, u, v)
+    normal = make_bezier_patch_with_points(patch_n, u, v)
 
     viewpos = symbolic_vector_3d('viewPoint')
     viewpos = Matrix([0,0,0])
@@ -978,7 +599,7 @@ def silhouette_quadratic_3d_edge_gradient():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
 
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
  
     patch_du = [
         [symbolic_vector_3d('du1'), symbolic_vector_3d('du2')],
@@ -992,8 +613,8 @@ def silhouette_quadratic_3d_edge_gradient():
     # patch_du = differentiate_patch_points_u(patch)
     # patch_dv = differentiate_patch_points_v(patch)
 
-    tangents_u = make_patch(patch_du, u, v)
-    tangents_v = make_patch(patch_dv, u, v)
+    tangents_u = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v = make_bezier_patch_with_points(patch_dv, u, v)
 
     normal = tangents_u.cross(tangents_v)
 
@@ -1024,8 +645,8 @@ def silhouette_quadratic_3d_homogeneous_edge():
         [symbolic_vector_3d('dv4'), symbolic_vector_3d('dv5'), symbolic_vector_3d('dv6')]
     ]
 
-    tangents_u_hom = make_patch(patch_du, u, v)
-    tangents_v_hom = make_patch(patch_dv, u, v)
+    tangents_u_hom = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v_hom = make_bezier_patch_with_points(patch_dv, u, v)
 
     tangents_u = Matrix((tangents_u_hom / tangents_u_hom[3])[0:3])
     tangents_v = Matrix((tangents_v_hom / tangents_v_hom[3])[0:3])
@@ -1060,8 +681,8 @@ def silhouette_quadratic_3d_homogeneous_edge_explicit():
     patch_du = differentiate_patch_points_u(patch)
     patch_dv = differentiate_patch_points_v(patch)
 
-    tangents_u_hom = make_patch(patch_du, u, v)
-    tangents_v_hom = make_patch(patch_dv, u, v)
+    tangents_u_hom = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v_hom = make_bezier_patch_with_points(patch_dv, u, v)
 
     tangents_u = Matrix((tangents_u_hom / tangents_u_hom[3])[0:3])
     tangents_v = Matrix((tangents_v_hom / tangents_v_hom[3])[0:3])
@@ -1098,8 +719,8 @@ def silhouette_quadratic_3d_homogeneous_edge_explicit_gradient():
     patch_du = differentiate_patch_points_u(patch)
     patch_dv = differentiate_patch_points_v(patch)
 
-    tangents_u_hom = make_patch(patch_du, u, v)
-    tangents_v_hom = make_patch(patch_dv, u, v)
+    tangents_u_hom = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v_hom = make_bezier_patch_with_points(patch_dv, u, v)
 
     tangents_u = Matrix((tangents_u_hom / tangents_u_hom[3])[0:3])
     tangents_v = Matrix((tangents_v_hom / tangents_v_hom[3])[0:3])
@@ -1122,7 +743,7 @@ def quadratic_patch_3d_normals():
         [symbolic_vector_3d('p7'), symbolic_vector_3d('p8'), symbolic_vector_3d('p9')]
     ]
 
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
 
     tangent_u = diff(pos, u)
     tangent_v = diff(pos, v)
@@ -1155,6 +776,9 @@ def quadratic_2d_bezier():
     print_code(common, exprs)
 
 def quartic_bezier_3d():
+    '''
+    Todo: Find biquadratic forms
+    '''
     t = symbols('t')
 
     p1, p2, p3, p4, p5 = symbols('p1 p2 p3 p4 p5')
@@ -1173,329 +797,6 @@ def quartic_bezier_3d():
     # points_d = get_curve_point_deltas(points, 4)
     # bases_d = bezier_bases(3, t)
     # pd = make_bezier_expr(points_d, bases_d)
-
-def trinomial(n,i,j,k):
-    return math.factorial(n) / (math.factorial(i) * math.factorial(j) * math.factorial(k))
-
-'''
-Todo:
-I don't understand a specific thing:
-We're generating, I think, in the exact same way that PN triangle paper suggests,
-yet for [i,j,k] = [3,0,0] the get term:
-
-p300*w^3
-
-whereas I get:
-p300*u^3
-
-Because u^i...
-
-Why? Might be a printing mistake or something.
-
-With ijk cycled backwards one tick, I get:
-(symbols[0]**j * symbols[1]**k * symbols[2]**i)
-The results of which match the paper. Meh.
-'''
-def triangular_patch(symbols, degree, basis):
-    patch = Matrix([0]*len(basis))
-
-    for i in range(0, degree+1):
-        for j in range(0, degree+1):
-            for k in range(0, degree+1):
-                if (i+j+k != degree):
-                    continue
-         
-                tri = trinomial(degree,i,j,k)
-                p_ijk = symbolic_vector('p%i%i%i'%(i,j,k), basis) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
-                patch += p_ijk
-
-    return patch
-
-def triangular_patch_with_points(points, symbols, degree):
-    dimensions = points[0].shape[0]
-    patch = Matrix([0]*dimensions)
-
-    pointIdx = 0
-
-    for i in range(0, degree+1):
-        for j in range(0, degree+1):
-            for k in range(0, degree+1):
-                if (i+j+k != degree):
-                    continue
-         
-                tri = trinomial(degree,i,j,k)
-                p_ijk = points[pointIdx] * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
-                pointIdx += 1
-                patch += p_ijk
-
-    return patch
-
-def triangular_patch_3d_du(symbols, degree):
-    patch = Matrix([0,0,0])
-
-    for i in range(0, degree):
-        for j in range(0, degree):
-            for k in range(0, degree):
-                if (i+j+k != degree-1):
-                    continue
-         
-                tri = trinomial(degree,i,j,k)
-                p_ijk = symbolic_vector_3d('p%i%i%i'%(i+1,j,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
-                patch += p_ijk
-
-    return patch
-
-def triangular_patch_3d_dv(symbols, degree):
-    patch = Matrix([0,0,0])
-
-    for i in range(0, degree):
-        for j in range(0, degree):
-            for k in range(0, degree):
-                if (i+j+k != degree-1):
-                    continue
-         
-                tri = trinomial(degree,i,j,k)
-                p_ijk = symbolic_vector_3d('p%i%i%i'%(i,j+1,k)) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
-                patch += p_ijk
-
-    return patch
-
-def quadratic_triangular_patch_3d():
-    u, v, w = symbols('u v w')
-    # w = 1 - u - v
-
-    patch = triangular_patch((u, v, w), 2, BASIS_3D)
-
-    common, exprs = cse(patch, numbered_symbols('a'))
-    print_code(common, exprs)
-
-def quadratic_triangular_patch_3d_prove_derivatives():
-    u, v, w = symbols('u v w')
-    # w = 1 - u - v
-
-    patch = triangular_patch((u, v, w), 2, BASIS_3D)
-    pprint(diff(patch, u) - triangular_patch_3d_du((u,v,w), 2))
-
-def quadratic_triangular_patch_3d_silhouette():
-    u, v, w = symbols('u v w')
-    # v = 1-u
-    # w = 0
-    '''
-    Trying to get closed form solution for silhouette along
-    the u-v edge. But pluggin the above into differentiation
-    goes wrong of course.
-
-    with prepared du & dv patches for tangent calculations,
-    this would work.
-    '''
-
-    patch = triangular_patch((u,v,w), 2, BASIS_3D)
-    patch_du = triangular_patch_3d_du((u, v, w), 2)
-    patch_dv = triangular_patch_3d_dv((u, v, w), 2)
-
-    patch_normal = patch_du.cross(patch_dv)
-    pprint(patch_du)
-
-    # viewpoint = Matrix([0,0,0])
-    # viewdir = patch - viewpoint
-
-    # silhouette = viewdir.dot(patch_normal)**2
-    # silhouette = diff(silhouette, u)
-    # silhouette = solveset(silhouette, u, domain=S.Reals)
-    # print(silhouette)
-
-    # solutions = list(map(lambda s: s.subs(v, 1-u).subs(w, 0), silhouette))
-
-    # silhouette = silhouette.subs(v, 1-u).subs(w, 0)
-    # silhouette = simplify(silhouette)
-    # print(solutions[0])
-
-    # common, exprs = cse(silhouette, numbered_symbols('a'))
-    # print_code(common, exprs)
-
-def quadratic_triangular_patch_3d_silhouette_gradient():
-    u, v, w = symbols('u v w')
-    # w = 1 - u - v
-
-    patch = triangular_patch((u, v, w), 2, BASIS_3D)
-    patch_du = diff(patch, u)
-    patch_dv = diff(patch, v)
-
-    patch_normal = patch_du.cross(patch_dv)
-
-    viewpoint = Matrix([0,0,0])
-    viewdir = patch - viewpoint
-
-    silhouette = viewdir.dot(patch_normal)**2
-
-    grad_u = diff(silhouette, u)
-    grad_v = diff(silhouette, v)
-
-    common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
-    print_code(common, exprs)
-
-
-def quadratic_rational_triangular_patch_3d():
-    u, v, w = symbols('u v w')
-
-    patch = triangular_patch((u, v, w), 2, BASIS_3D)
-    # pprint(patch, use_unicode=True, num_columns=140)
-    pprint(diff(patch, u), use_unicode=True, num_columns=140)
-
-def quadratic_rational_triangular_patch_3d_embedded_line():
-    '''
-    Full euclidean 3d evaluation of embedded linear
-    segment. Had presumed this to be a geodesic
-    on the sphere in case of rational octant, but
-    the general result is a quartic.
-    '''
-    u, v, w, t = symbols('u v w t')
-
-    patch = triangular_patch((u, v, w), 2, BASIS_4D)
-
-    uvw1 = symbolic_vector_3d('uvw1')
-    uvw2 = symbolic_vector_3d('uvw2')
-    # uvw1[2] = 1 - uvw1[0] - uvw1[1]
-    # uvw2[2] = 1 - uvw2[0] - uvw2[1]
-    bases_uv = bezier_bases(1, t)
-    uvw = make_bezier((uvw1, uvw2), bases_uv)(t)
-
-    p = patch.subs(u, uvw[0]).subs(v, uvw[1]).subs(w, uvw[2])
-    poly = to_polynomial(p[0], t)
-    print("Got polynomial of degree: %i" % (poly.degree()))
-    # pprint(expand(p[0]))
-
-    common, exprs = cse(p, numbered_symbols('a'))
-    print_code(common, exprs)
-
-
-def quadratic_rational_sphere_octant_3d_embedded_line():
-    u, v, w, t = symbols('u v w t')
-
-    #halfsqrt2 = Rational(1,2) * 2**Rational(1,2)
-    halfsqrt2 = Rational(1,1);
-    patch = triangular_patch_with_points([
-        Matrix([0, 0, 1, 1]), # 002
-        Matrix([0, 1, 1, 1]) * halfsqrt2,  # 011
-        Matrix([0, 1, 0, 1]),  # 020
-        Matrix([1, 0, 1, 1]) * halfsqrt2, # 101
-        Matrix([1, 1, 0, 1]) * halfsqrt2,  # 110
-        Matrix([1, 0, 0, 1]),  # 200
-    ], (u,v,w), 2)
-
-    uvw1 = symbolic_vector_3d('uvw1')
-    uvw2 = symbolic_vector_3d('uvw2')
-    # uvw1[2] = 1 - uvw1[0] - uvw1[1]
-    # uvw2[2] = 1 - uvw2[0] - uvw2[1]
-    bases_uv = bezier_bases(1, t)
-    uvw = make_bezier((uvw1, uvw2), bases_uv)(t)
-
-    p = patch.subs(u, uvw[0]).subs(v, uvw[1]).subs(w, uvw[2])
-    poly = to_polynomial(p[0], t)
-    print("Got polynomial of degree: %i"%(poly.degree()))
-
-    pprint(p[0])
-
-    # common, exprs = cse(p, numbered_symbols('a'))
-    # print_code(common, exprs)
-
-
-def quadratic_rational_sphere_octant_3d_norm_proof():
-    '''
-    Here we check the magnitude of the vector we
-    get in the center. All vectors we get should
-    have unit norm, of course. But!
-
-    0.37037037037037⋅√2 + 0.666666666666667 == ~1.19
-
-    So evidently, we do not actually have a sphere here.
-    '''
-    u, v, w = symbols('u v w')
-
-    u = Rational(1,3)
-    v = Rational(1,3)
-    w = 1 - u - v
-
-    halfsqrt2 = Rational(1,2) * 2**Rational(1,2)
-    patch = triangular_patch_with_points([
-        Matrix([0, 0, 1, 1]),  # 002
-        Matrix([0, 1, 1, 1]) * halfsqrt2,  # 011
-        Matrix([0, 1, 0, 1]),  # 020
-        Matrix([1, 0, 1, 1]) * halfsqrt2,  # 101
-        Matrix([1, 1, 0, 1]) * halfsqrt2,  # 110
-        Matrix([1, 0, 0, 1]),  # 200
-    ], (u, v, w), 2)
-
-    norm = expand(patch.dot(patch))
-
-    pprint(norm)
-
-def quadratic_rational_triangular_patch_3d_geodesic_gradient():
-    '''
-    Starting from a random curve, give dControls/GeodesicError,
-    such that we can numerically find geodesics
-    '''
-    u, v, w, t = symbols('u v w t')
-
-    patch = triangular_patch((u, v, w), 2, BASIS_4D)
-
-    uvw1 = symbolic_vector_3d('uvw1')
-    uvw2 = symbolic_vector_3d('uvw2')
-    uvw3 = symbolic_vector_3d('uvw3')
-
-    bases_uv = bezier_bases(2, t)
-    uvw = make_bezier((uvw1, uvw2, uvw3), bases_uv)(t)
-
-    p = patch.subs(u, uvw[0]).subs(v, uvw[1]).subs(w, uvw[2])
-
-    # Piecewise Euclidean quadrance, stepping along curve
-    # quadrance_steps = 8
-    # quadrance = Rational(0,1)
-    # t_step = Rational(1, quadrance_steps)
-    # for i in range(0, quadrance_steps-1):
-    #     t_i = t_step * i
-    #     p_delta = p.subs(t, t_i+t_step) - p.subs(t, t_i)
-    #     quadrance += p_delta.dot(p_delta)
-
-    # Quadrance based on control point chord distance 
-    uvw_delta1 = uvw2 - uvw1
-    uvw_delta2 = uvw3 - uvw2
-    quadrance = uvw_delta1.dot(uvw_delta1) + uvw_delta2.dot(uvw_delta2)
-
-    quadranceGradU = diff(quadrance, uvw2[0])
-    quadranceGradV = diff(quadrance, uvw2[1])
-    quadranceGradW = diff(quadrance, uvw2[2])
-
-    common, exprs = cse((quadranceGradU,quadranceGradV,quadranceGradW), numbered_symbols('a'))
-    print_code(common, exprs)
-
-def cubic_triangular_patch_3d():
-    u, v, w = symbols('u v w')
-
-    patch = triangular_patch((u, v, w), 3, BASIS_3D)
-    # pprint(patch, use_unicode=True, num_columns=140)
-    pprint(diff(patch, u), use_unicode=True, num_columns=140)
-
-def cubic_triangular_patch_3d_silhouette_gradient():
-    u, v, w = symbols('u v w')
-    # w = 1 - u - v
-
-    patch = triangular_patch((u, v, w), 3, BASIS_3D)
-    patch_du = diff(patch, u)
-    patch_dv = diff(patch, v)
-
-    patch_normal = patch_du.cross(patch_dv)
-
-    viewpoint = Matrix([0,0,0])
-    viewdir = patch - viewpoint
-
-    silhouette = viewdir.dot(patch_normal)**2
-
-    grad_u = diff(silhouette, u)
-    grad_v = diff(silhouette, v)
-
-    common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
-    print_code(common, exprs)
 
 def diagonal_of_linear_patch():
     '''
@@ -1524,7 +825,7 @@ def diagonal_of_linear_patch():
 
     u, v, t = symbols('u v t')
 
-    patch = make_patch(patch, u, v)
+    patch = make_bezier_patch_with_points(patch, u, v)
 
     patch.subs(p2, p2 - p1).subs(p3, p3 - p1)
     patch = patch.subs(v, t).subs(u, t)
@@ -1550,7 +851,7 @@ def diagonal_of_quadratic_patch():
 
     u, v, t = symbols('u v t')
 
-    patch = make_patch(patch, u, v)
+    patch = make_bezier_patch_with_points(patch, u, v)
     p = patch.subs(v, t).subs(u, t)
 
     # pprint(p)
@@ -1559,7 +860,7 @@ def diagonal_of_quadratic_patch():
 
     print_code(common, exprs)
 
-def geodesic_on_quadratic_patch():
+def line_inside_quadratic_patch():
     '''
     Yield a quartic curve that spans between two
     points on the surface defined in uv space
@@ -1590,7 +891,7 @@ def geodesic_on_quadratic_patch():
 
     u, v, t = symbols('u v t')
 
-    patch = make_patch(patch, u, v)
+    patch = make_bezier_patch_with_points(patch, u, v)
 
     # now re-express u,v as linear functions of single param t
     uv1 = symbolic_vector_2d('uv1')
@@ -1635,7 +936,7 @@ def quadratic_curve_on_quadratic_patch():
         [p4, p5, p6],
         [p7, p8, p9]
     ]
-    patch = make_patch(patch, u, v)
+    patch = make_bezier_patch_with_points(patch, u, v)
     
     uv1 = symbolic_vector_2d('uv1')
     uv2 = symbolic_vector_2d('uv2')
@@ -1670,7 +971,7 @@ def cubic_curve_on_quadratic_patch():
         [p4, p5, p6],
         [p7, p8, p9]
     ]
-    patch = make_patch(patch, u, v)
+    patch = make_bezier_patch_with_points(patch, u, v)
     
     uv1 = symbolic_vector_2d('uv1')
     uv2 = symbolic_vector_2d('uv2')
@@ -1688,32 +989,46 @@ def cubic_curve_on_quadratic_patch():
     common, exprs = cse(p, numbered_symbols('a'))
     print_code(common, exprs)
 
-def prove_curve_derives():
-    t = symbols('t')
-
-    p1 = symbolic_vector_3d('p1')
-    p2 = symbolic_vector_3d('p2')
-    p3 = symbolic_vector_3d('p3')
-
-    points = (p1, p2, p3)
-    pos = make_bezier(points, bezier_bases(2, t))(t)
-
-    tangents = differentiate_curve_points(points)
-    tangents_a = expand(make_bezier(tangents, bezier_bases(1, t))(t))
-
-    tangents_b = diff(pos, t)
-
-    tangents_a = expand(tangents_a)
-    tangents_b = expand(tangents_b)
-
-    print("\nTangents A:\n")
-    pprint(tangents_a)
-    print("\nTangents B:\n")
-    pprint(tangents_b)
-    print("\nDifference:\n")
-    pprint(tangents_b - tangents_a)
-
     # The above difference yields [0,0,0], so this checks out
+
+def make_point_list(count, basis):
+    points = []
+    for i in range(0, count):
+        points.append(symbolic_vector('p%i'%i, basis))
+    return points
+
+def make_patch(u, v, degree_u, degree_v, basis):
+    dimensions = len(basis)
+ 
+    bases_u = bezier_bases(degree_u, u)
+    bases_v = bezier_bases(degree_v, v)
+
+    pos = Matrix([0]*dimensions)
+
+    i = 1
+    for vIdx in range(0, degree_v+1):
+        for uIdx in range(0, degree_u+1):
+            pos += symbolic_vector('p_%i' % i, basis) * bases_u[uIdx] * bases_v[vIdx]
+            i+=1
+
+    return pos
+
+def line_inside_quartic_patch():
+    u, v, t = symbols('u v t')
+
+    patch = make_patch(u, v, 4, 4, BASIS_3D)
+
+    # now re-express u,v as linear functions of single param t
+    uv1 = symbolic_vector_2d('uv1')
+    uv2 = symbolic_vector_2d('uv2')
+    bases_uv = bezier_bases(1, t)
+    uv = make_bezier((uv1, uv2), bases_uv)(t)
+
+    p = patch.subs(u, uv[0]).subs(v, uv[1])
+
+    common, exprs = cse(p, numbered_symbols('a'))
+
+    print_code(common, exprs)
 
 def prove_patch_derives():
     u, v = symbols('u v')
@@ -1733,12 +1048,12 @@ def prove_patch_derives():
         [p4, p5, p6],
         [p7, p8, p9]
     ]
-    pos = make_patch(patch, u, v)
+    pos = make_bezier_patch_with_points(patch, u, v)
 
     patch_du = differentiate_patch_points_u(patch)
     patch_dv = differentiate_patch_points_v(patch)
-    tangents_u_a = make_patch(patch_du, u, v)
-    tangents_v_a = make_patch(patch_dv, u, v)
+    tangents_u_a = make_bezier_patch_with_points(patch_du, u, v)
+    tangents_v_a = make_bezier_patch_with_points(patch_dv, u, v)
 
     tangents_u_b = diff(pos, u)
     tangents_v_b = diff(pos, v)
@@ -1762,99 +1077,10 @@ def prove_patch_derives():
     difference = expand(normals_a[0]) - expand(normals_b[0])
     pprint(difference)
 
-def bezier_log():
-    # Exploring relationships between bezier curves and logarithms
-    # Todo: projective
-    x = symbols('x')
-    p0 = Matrix([0,     0])
-    p1 = Matrix([256,   0])
-    p2 = Matrix([256,   256])
-    points = (p0, p1, p2)
-    bases = bezier_bases(2, x)
-    bez2_x = make_bezier(points, bases)(x)[0] / 32
-    bez2_x = bez2_x.subs(x, x/256)
-
-    pprint(bez2_x)
-
-    log2_x = log(x, 2)
-
-    graph = plot(log2_x, bez2_x, (x, 1, 256))
-
 def main():
     init_printing(pretty_print=True, use_unicode=True, num_columns=180)
-    
-    # === Evaluating Curves & Surfaces ===
 
-    # quadratic_2d_bezier()
-    # bezier_quartic()
-    # quadratic_patch_3d_normals()
-
-    # prove_curve_derives()
-    # prove_patch_derives()
-
-    # quadratic_triangular_patch_3d()
-    # quadratic_triangular_patch_3d_prove_derivatives()
-    # quadratic_triangular_patch_3d_silhouette()
-    # quadratic_triangular_patch_3d_silhouette_gradient()
-    # quadratic_rational_triangular_patch_3d()
-    # quadratic_rational_triangular_patch_3d_embedded_line()
-    # quadratic_rational_sphere_octant_3d_embedded_line()
-    # quadratic_rational_triangular_patch_3d_geodesic_gradient()
-    quadratic_rational_sphere_octant_3d_norm_proof()
-
-    # cubic_triangular_patch_3d()
-    # cubic_triangular_patch_3d_silhouette_gradient()
-
-    # === Curvature min/max, inflectons ===
-
-    # maxima_1st_cubic_2d()
-    # maxima_2nd_cubic_2d()
-    # inflections_cubic_2d()
-    # inflections_deriv_cubic_2d()
-    # curvature_maxima_cubic_2d()
-
-    # inflections_3d()
-    # inflections_cubic_3d()
-    # curvature_maxima_3d()    
-
-    # === Quad Silhouette finding ===
-
-    # silhouette_cubic_2d()
-    # silhouette_quadratic_2d()
-    # silhouette_quadratic_2d_gradient()
-    # silhouette_quadratic_patch_3d()
-    # silhouette_quadratic_projected_2d()
-    # silhouette_quadratic_3d_gradient()
-    # silhouette_quadratic_3d_gradient_2nd()
-    # silhouette_quadratic_3d_edge()
-    # silhouette_quadratic_3d_edge_gradient()
-    # silhouette_quadratic_3d_edge_u()
-    # silhouette_quadratic_3d_homogeneous_edge()
-    # silhouette_quadratic_3d_homogeneous_edge_explicit()
-    # silhouette_quadratic_3d_homogeneous_edge_explicit_gradient()
-    # silhouette_quadratic_3d_doubledot()
-
-    # silhouette_quadratic_3d_gradient_wrt_embedded_cubic()
-    # silhouette_quadratic_3d_gradient_wrt_embedded_cubic_tangents()
-
-    # silhouette_quadratic_3d_quadratic_normals()    
-
-    # === Curves defined on (or embedded within) surfaces
-
-    # diagonal_of_linear_patch()
-    # diagonal_of_quadratic_patch()
-    # geodesic_on_quadratic_patch()
-    # quadratic_curve_on_quadratic_patch()
-    # cubic_curve_on_quadratic_patch()
-    
-    # Kinematics
-
-    # ballistics()
-    # ballistics_bezier()
-    
-    # Log
-
-    # bezier_log()
+    line_inside_quartic_patch()
 
 if __name__ == "__main__":
     main()

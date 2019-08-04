@@ -95,44 +95,62 @@ def replace_vector_vars(code):
     Replace each with 'curve[*].*'
     '''
 
-    tri_indices = {
-        "002" : 0,
-        "011" : 1,
-        "020" : 2,
-        "101" : 3,
-        "110" : 4,
-        "200" : 5,
+    # tri_quad_indices = {
+    #     "002" : 0,
+    #     "011" : 1,
+    #     "020" : 2,
+    #     "101" : 3,
+    #     "110" : 4,
+    #     "200" : 5,
+    # }
+
+    tri_quart_indices = {
+        "004": 0,
+        "013": 1,
+        "022": 2,
+        "031": 3,
+        "040": 4,
+        "103": 5,
+        "112": 6,
+        "121": 7,
+        "130": 8,
+        "202": 9,
+        "211": 10,
+        "220": 11,
+        "301": 12,
+        "310": 13,
+        "400": 14,
     }
 
-    xyz = ['x', 'y', 'z']
+    bases = ['x', 'y', 'z', 'w']
 
     pos = 0
     while True:
         pos = code.find('_', pos)
-        if pos == -1:
+        if pos <= 1:
             break
 
-        if code[pos+1] in xyz and code[pos-1].isdigit():
-            if not code[pos-2].isdigit():
-                # Quad point indexing, e.g. p0_x -> p[0].x
-                idx = int(code[pos-1])
-                idx -= 1
+        # in bases and code[pos-1].isdigit()
+        if code[pos-1] == 'p' and code[pos+1].isdigit():
+            # Quad point indexing, e.g. p_0.x -> p[0].x
 
-                name_start = find_identifier_backwards_from(code, pos-2)
-                name = code[name_start:pos-1]
+            numDigits = 1
+            while (code[pos+numDigits+1].isdigit()):
+                numDigits+=1
 
-                code = code[0:name_start] + name + "[" + str(idx) + "]." + code[pos+1:]
-            else:
-                # Triangle point indexing, e.g. p101_x -> p[3]
-                # Todo: don't assume it is a quadratic triangle...
+            index = int(code[pos+1:pos+1+numDigits]) - 1
 
-                idxString = code[pos-3:pos]
-                idx = tri_indices[idxString]
+            code = code[0:pos-1] + "p[" + str(index) + "]." + code[pos+1+numDigits+1:]
+        
+        # elif code[pos-1] == 't':
+        #     # Tri point indexing, e.g. t_101.x -> p[3].x
+        #     # Todo: find out which degree of patch we're dealing with
 
-                name_start = find_identifier_backwards_from(code, pos-1)
-                name = code[name_start:name_start+1]
+        #     idxString = code[pos+2:pos+5]
+        #     idx = tri_quart_indices[idxString]
 
-                code = code[0:name_start] + name + "[" + str(idx) + "]." + code[pos+1:]
+        #     code = code[pos] + "p[" + idx + "]." + code[pos+5:]
+
         else:
             pos += 1
     return code

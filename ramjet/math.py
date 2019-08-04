@@ -38,10 +38,10 @@ def solve_quadratic(expr, t):
 ''' Some Linear Algebra helpers'''
 
 BASIS_4D = ['x', 'y', 'z', 'w']
-BASIS_1D =      ['x']
-BASIS_2D =      ['x', 'y']
-BASIS_3D =      ['x', 'y', 'z']
-BASIS_4D =      ['x', 'y', 'z', 'w']
+BASIS_1D = ['x']
+BASIS_2D = ['x', 'y']
+BASIS_3D = ['x', 'y', 'z']
+BASIS_4D = ['x', 'y', 'z', 'w']
 
 def symbolic_vector(name, basis):
     bases = map(lambda c: name + "_" + c + ", ", basis)
@@ -79,11 +79,14 @@ def cross_2d(p1, p2):
 
 ''' de Casteljau Bezier '''
 
+
+def trinomial(n, i, j, k):
+    return math.factorial(n) / (math.factorial(i) * math.factorial(j) * math.factorial(k))
+
 def bernstein_basis(n, i, param):
     basis = binomial(n, i) * param**i * (1 - param)**(n-i)
 
     return basis
-
 
 def bezier_bases(n, param):
     bases = []
@@ -91,7 +94,6 @@ def bezier_bases(n, param):
         bases.append(bernstein_basis(n, i, param))
 
     return bases
-
 
 def make_bezier(points, bases):
     if len(points) != len(bases):
@@ -108,6 +110,28 @@ def differentiate_curve_points(points):
     for i in range(0, input_degree):
         points_dt.append((input_degree) * (points[i+1] - points[i]))
     return points_dt
+
+
+def make_bezier_patch_with_points(patch, u, v):
+    '''
+    Given matrix of points and two parameters, constructs a function that
+    samples a position along the given surface. Arbitrary degree.
+    '''
+
+    dimensions = patch[0][0].shape[0]  # Get point dimensions
+
+    degree_u = len(patch[0])-1
+    degree_v = len(patch)-1
+    bases_u = bezier_bases(degree_u, u)
+    bases_v = bezier_bases(degree_v, v)
+
+    pos = Matrix([0]*dimensions)
+
+    for vIdx in range(0, degree_v+1):
+        for uIdx in range(0, degree_u+1):
+            pos += patch[vIdx][uIdx] * bases_u[uIdx] * bases_v[vIdx]
+
+    return pos
 
 def differentiate_patch_points(patch):
     '''
@@ -132,7 +156,6 @@ def differentiate_patch_points(patch):
 
     return (patch_du, patch_dv)
 
-
 def differentiate_patch_points_u(patch):
     input_degree = len(patch[0])-1
     
@@ -146,7 +169,6 @@ def differentiate_patch_points_u(patch):
 
     return patch_du
 
-
 def differentiate_patch_points_v(patch):
     input_degree = len(patch)-1
     
@@ -159,24 +181,3 @@ def differentiate_patch_points_v(patch):
         patch_dv.append(dv)
 
     return patch_dv
-
-def make_patch(patch, u, v):
-    '''
-    Given matrix of points and two parameters, constructs a function that
-    samples a position along the given surface. Arbitrary degree.
-    '''
-
-    dimensions = patch[0][0].shape[0] # Get point dimensions
-
-    degree_u = len(patch[0])-1
-    degree_v = len(patch)-1
-    bases_u = bezier_bases(degree_u, u)
-    bases_v = bezier_bases(degree_v, v)
-
-    pos = Matrix([0]*dimensions)
-
-    for vIdx in range(0, degree_v+1):
-        for uIdx in range(0, degree_u+1):
-            pos += patch[vIdx][uIdx] * bases_u[uIdx] * bases_v[vIdx]
-
-    return pos
