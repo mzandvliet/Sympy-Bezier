@@ -1030,6 +1030,23 @@ def line_inside_quartic_patch():
 
     print_code(common, exprs)
 
+    '''
+    Todo: The above is curved space. Now we want
+    curved space-time.
+
+    We're trying to figure out a way to bring the
+    time dimension in.
+
+    If we add a time param in embedded space, we
+    run into inconsistency: there already is one,
+    and it is linear over the current space-like
+    linear segment (uv) we've created.
+
+    But that assumes flat time! And we're saying
+    time should curve just as space does.
+
+    '''
+
 def prove_patch_derives():
     u, v = symbols('u v')
 
@@ -1077,10 +1094,32 @@ def prove_patch_derives():
     difference = expand(normals_a[0]) - expand(normals_b[0])
     pprint(difference)
 
+
+def cubic_point_fit_gradient():
+    t = symbols('t')
+
+    p1 = symbolic_vector_2d('p_1')
+    p2 = symbolic_vector_2d('p_2')
+    p3 = symbolic_vector_2d('p_3')
+    p4 = symbolic_vector_2d('p_4')
+    q = symbolic_vector_2d('q')
+    points = (p1, p2, p3, p4)
+    bases = bezier_bases(3, t)
+    p = make_bezier(points, bases)(t)
+
+    delta = q - p
+    error = delta.dot(delta)**2
+    grad_p2 = diff(error, p2)
+    grad_p3 = diff(error, p3)
+
+    common, exprs = cse((grad_p2, grad_p3), numbered_symbols('a'))
+    print_code(common, exprs)
+
 def main():
     init_printing(pretty_print=True, use_unicode=True, num_columns=180)
 
-    line_inside_quartic_patch()
+    # line_inside_quartic_patch()
+    cubic_point_fit_gradient()
 
 if __name__ == "__main__":
     main()
