@@ -139,7 +139,13 @@ def quartic_bezier_wave_equation_1d():
     dp4_dt = dp4_dt.subs(q, q4)
     dp5_dt = dp5_dt.subs(q, q5)
 
-    common, exprs = cse((dp1_dt, dp2_dt, dp3_dt, dp4_dt, dp5_dt), numbered_symbols('a'))
+    ddp1_ddt = diff(dp1_dt, t)
+    ddp2_ddt = diff(dp2_dt, t)
+    ddp3_ddt = diff(dp3_dt, t)
+    ddp4_ddt = diff(dp4_dt, t)
+    ddp5_ddt = diff(dp5_dt, t)
+
+    common, exprs = cse((ddp1_ddt, ddp2_ddt, ddp3_ddt, ddp4_ddt, ddp5_ddt), numbered_symbols('a'))
     print_code(common, exprs)
 
 def main():
