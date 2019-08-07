@@ -106,7 +106,7 @@ def make_bezier(points, bases):
 
 def differentiate_curve_points(points):
     points_dt = []
-    input_degree = len(points[0])-1
+    input_degree = len(points)-1
     for i in range(0, input_degree):
         points_dt.append((input_degree) * (points[i+1] - points[i]))
     return points_dt
