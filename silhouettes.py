@@ -66,9 +66,9 @@ def silhouette_cubic_2d():
     pprint(solution)
 
     # solution = solveset(solution, t)
-    # common, exprs = cse(solution, numbered_symbols('a'))
 
-    # print_code(common, exprs)
+    common, exprs = cse(solution, numbered_symbols('a'))
+    print_code(common, exprs)
 
 def silhouette_quadratic_2d():
     # The setup:

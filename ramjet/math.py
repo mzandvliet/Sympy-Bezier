@@ -81,7 +81,7 @@ def cross_2d(p1, p2):
 
 
 def trinomial(n, i, j, k):
-    return math.factorial(n) / (math.factorial(i) * math.factorial(j) * math.factorial(k))
+    return factorial(n) / (factorial(i) * factorial(j) * factorial(k))
 
 def bernstein_basis(n, i, param):
     basis = binomial(n, i) * param**i * (1 - param)**(n-i)

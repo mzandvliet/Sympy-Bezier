@@ -28,8 +28,40 @@ With ijk cycled backwards one tick, I get:
 The results of which match the paper. Meh.
 '''
 
+# de Casteljau recursive evaluation
 
-def triangular_patch(symbols, degree, basis):
+def barycentric_triangle(a, b, c, params):
+    p = a * params[2] + b * params[1] + c * params[0]
+    return p
+
+def barycentric_triangle_2(points, params):
+    t0_0 = barycentric_triangle(points[0], points[1], points[3], params)
+    t0_1 = barycentric_triangle(points[1], points[2], points[4], params)
+    t0_2 = barycentric_triangle(points[3], points[4], points[5], params)
+
+    t1_0 = barycentric_triangle(t0_0, t0_1, t0_2, params)
+
+    return t1_0
+
+
+def triangular_patch_symbolic(points, params, degree):
+    patch = 0
+
+    s = 0
+    for i in range(0, degree+1):
+        for j in range(0, degree+1):
+            for k in range(0, degree+1):
+                if (i+j+k != degree):
+                    continue
+
+                tri = trinomial(degree, i, j, k)
+                p_ijk = points[s] * tri * (params[0]**i * params[1]**j * params[2]**k)
+                patch += p_ijk
+                s += 1
+
+    return patch
+
+def triangular_patch(params, degree, basis):
     patch = Matrix([0]*len(basis))
 
     for i in range(0, degree+1):
@@ -40,12 +72,13 @@ def triangular_patch(symbols, degree, basis):
 
                 tri = trinomial(degree, i, j, k)
                 p_ijk = symbolic_vector('p%i%i%i' % (
-                    i, j, k), basis) * tri * (symbols[0]**i * symbols[1]**j * symbols[2]**k)
+                    i, j, k), basis) * tri * (params[0]**i * params[1]**j * params[2]**k)
                 print('%i%i%i' % (i, j, k))
                 patch += p_ijk
 
     return patch
 
+# polynomial evaluation
 
 def triangular_patch_with_points(points, symbols, degree):
     dimensions = points[0].shape[0]
@@ -383,3 +416,25 @@ def cubic_triangular_patch_3d_silhouette_gradient():
 
     common, exprs = cse((grad_u, grad_v), numbered_symbols('a'))
     print_code(common, exprs)
+
+
+def main():
+    init_printing(pretty_print=True, use_unicode=True, num_columns=180)
+    
+    points = symbols("a b c d e f")  # left-to-right, bottom-to-top
+    params = symbols("u v w")
+
+    print("Polynomial construction")
+    poly = triangular_patch_symbolic(points, params, 2)
+    pprint(poly)
+
+    print("Casteljau construction")
+    cast = barycentric_triangle_2(points, params)
+    pprint(cast)
+
+    diff = expand(poly) - expand(cast)
+    print("Difference: " + str(diff))
+
+
+if __name__ == "__main__":
+    main()

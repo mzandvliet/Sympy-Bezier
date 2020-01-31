@@ -58,7 +58,11 @@ def print_code(common, exprs):
     print("\n/*--------------solutions------------------*/\n")
 
     for i, expr in enumerate(exprs):
-        print("float output_%d = " % i + replace_vector_vars(ccode(expr)) + ";")
+        expr = ccode(expr);
+        expr = format_math_funcs(expr)
+        expr = replace_matrix_vars(expr)
+        expr = format_floats(expr)
+        print("float output_%d = " % i + expr + ";")
 
 
 '''
@@ -79,7 +83,8 @@ def csharp(code):
     code = "float " + code + ";"
 
     code = format_math_funcs(code)
-    code = replace_vector_vars(code)
+    # code = replace_vector_vars(code)
+    code = replace_matrix_vars(code)
     code = format_floats(code)
 
     return code
@@ -160,6 +165,25 @@ def find_identifier_backwards_from(code, end):
         if code[i].isalpha():
             return i
     return 0
+
+
+def replace_matrix_vars(code):
+    pos = 0
+    while True:
+        pos = code.find('p', pos) # returns -1 if none found
+
+        if pos == -1:
+            break
+
+        if code[pos+2] == '_' and code[pos+1].isdigit() and code[pos+3].isdigit():
+            x = int(code[pos+1])
+            y = int(code[pos+3])
+
+            code = code[0:pos] + "p[%i][%i]" % (x, y) + code[pos+4:]
+            
+        pos += 1
+
+    return code
 
 def format_floats(code):
     '''
