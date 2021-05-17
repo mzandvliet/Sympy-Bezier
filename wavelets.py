@@ -32,11 +32,18 @@ def freq_modulation():
     f1 = Rational(2)
 
     # Todo: use a bezier curve here, so we can fit many points in time-frequency space?
+    # CAREFUL: don't mix up linear time and the spline parameter 't'
+
+    # options:
+    # simplify by inverting 1/f and expressing points in time-wavelength space?
+    # integrate and maximize numerically, which is the easiest
+
+
     f = f0 * (1-t) + f1 * t
 
-    osc = sin(f * t * pi * 2)
+    # osc = sin(f * t * pi * 2)
+    # period = 1 / f
 
-    period = 1 / f
     phase = f * t
 
     pprint(phase)
