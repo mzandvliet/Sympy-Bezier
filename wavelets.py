@@ -26,19 +26,24 @@ def freq_modulation():
     t = symbols('t')
 
     t0 = Rational(0)
-    f0 = Rational(16)
+    f0 = Rational(1)
 
     t1 = Rational(1)
-    f1 = Rational(8)
+    f1 = Rational(2)
 
+    # Todo: use a bezier curve here, so we can fit many points in time-frequency space?
     f = f0 * (1-t) + f1 * t
 
     osc = sin(f * t * pi * 2)
 
-    phase = (1 / f) * t
+    period = 1 / f
+    phase = f * t
 
-    pprint(osc)
     pprint(phase)
+
+    solution = solve(phase-1, t)
+
+    pprint(solution)
 
 def main():
     init_printing(pretty_print=True, use_unicode=True, num_columns=180)
