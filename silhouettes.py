@@ -798,6 +798,44 @@ def quartic_bezier_3d():
     # bases_d = bezier_bases(3, t)
     # pd = make_bezier_expr(points_d, bases_d)
 
+def quartic_bezier_2d():
+    t = symbols('t')
+
+    p0, p1, p2, p3, p4 = symbols('p0 p1 p2 p3 p4')
+
+    points = (p0, p1, p2, p3, p4)
+    bases = bezier_bases(4, t)
+    p = make_bezier(points, bases)(t)
+
+    common, exprs = cse(p, numbered_symbols('a'))
+    print_code(common, exprs)
+
+def quartic_bezier_2d_tangents():
+    t = symbols('t')
+
+    p0, p1, p2, p3, p4 = symbols('p0 p1 p2 p3 p4')
+
+    points = (p0, p1, p2, p3, p4)
+    bases = bezier_bases(4, t)
+    p = make_bezier(points, bases)(t)
+    tangent = diff(p, t)
+
+    common, exprs = cse(tangent, numbered_symbols('a'))
+    print_code(common, exprs)
+
+# def quintic_bezier_2d_tangents():
+#     t = symbols('t')
+
+#     p0, p1, p2, p3, p4, p5 = symbols('p0 p1 p2 p3 p4 p5')
+
+#     points = (p0, p1, p2, p3, p4, p5)
+#     bases = bezier_bases(5, t)
+#     p = make_bezier(points, bases)(t)
+#     tangent = diff(p, t)
+
+#     common, exprs = cse(tangent, numbered_symbols('a'))
+#     print_code(common, exprs)
+
 def diagonal_of_linear_patch():
     '''
     Essentially: bilinear interpolation across a quad
@@ -1119,7 +1157,11 @@ def main():
     init_printing(pretty_print=True, use_unicode=True, num_columns=180)
 
     # line_inside_quartic_patch()
-    cubic_point_fit_gradient()
+    # cubic_point_fit_gradient()
+
+    quartic_bezier_2d()
+    # quartic_bezier_2d_tangents()
+    # quintic_bezier_2d_tangents()
 
 if __name__ == "__main__":
     main()

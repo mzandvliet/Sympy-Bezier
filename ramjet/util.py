@@ -58,12 +58,41 @@ def print_code(common, exprs):
     print("\n/*--------------solutions------------------*/\n")
 
     for i, expr in enumerate(exprs):
+        #extract all poly coefficients, factor pow(x, 3) calls into x*x*x
+        p = Poly(expr)
+
         expr = ccode(expr);
         expr = format_math_funcs(expr)
         expr = replace_matrix_vars(expr)
         expr = format_floats(expr)
         print("float output_%d = " % i + expr + ";")
 
+
+def print_code_with_vars(common, exprs, vars):
+    print("\n/*----------------terms-------------------*/\n")
+
+    for t in common:
+        print(csharp(t))
+
+    print("\n/*--------------solutions------------------*/\n")
+
+    for i, expr in enumerate(exprs):
+        #extract all poly coefficients, factor pow(x, 3) calls into x*x*x
+        coeffs = Poly(expr, vars).coeffs()
+        replacements = [(coeffs[0]**i, power_sequence(coeffs[0], i)) for i in range(1, 6)]
+        expr = expr.subs(replacements)
+
+        expr = ccode(expr)
+        expr = format_math_funcs(expr)
+        expr = replace_matrix_vars(expr)
+        expr = format_floats(expr)
+        print("float output_%d = " % i + expr + ";")
+
+def power_sequence(var, power):
+    expr = var
+    for i in range(power-1):
+        expr *= var
+    return expr
 
 '''
 Poor man's CodeGen: take ccode output, and format it to valid
