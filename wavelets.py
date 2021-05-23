@@ -24,22 +24,32 @@ def morlet_orthogonality():
     w_b = w.subs([(x, Rational(1, 2))])
     pprint(integrate(w_a * w_b, (t, -1, 1)).evalf())
 
+def sum_test():
+    x = symbols('x')
+    test = lambda t, y: t**y
+    my_sum = Sum(test(x,2), (x, -16, +16))
+    pprint(my_sum)
+    pprint(my_sum.doit())
 
-def freq_modulation_3():
-    q = symbols('q')
+def morlet(f,x,n,t):
+    s = n / (pi * 2 * f)
+    return cos(pi * 2 * f * (x+t)) * exp(-(t**2) / (2 * s**2))
 
-    p0 = Matrix([0, 1])
-    p1 = Matrix([1, 2])
-    p2 = Matrix([2, 2])
+def discrete_convolution_derivatives():
+    # Goal: find gradient of convolution s.t. we can maximize dot product bewteen signal and wavelet
 
-    points = (p0, p1, p2)
-    bases = bezier_bases(2, q)
-    p = make_bezier(points, bases)(q)
+    x, t, wt = symbols('x t wt')
+    n = 6
 
-    f = p[1]
-    t = p[0]
+    f_a = 10
+    f_b = 9.9
 
-    # Todo: try rational curves to model the 1/f relationship intrinsically
+    w_a = morlet(f_a, 0, n, t)
+    w_b = morlet(f_b, 0, n, t)
+
+    convolution = Sum(w_a * w_b, (t, -16, +16))
+    pprint(convolution)
+    pprint(convolution.evalf())
 
 
 def freq_modulation_2():
@@ -105,8 +115,10 @@ def freq_modulation():
 def main():
     init_printing(pretty_print=True, use_unicode=True, num_columns=180)
 
+    # sum_test()
+
     # morlet_orthogonality()
-    freq_modulation_3()
+    discrete_convolution_derivatives()
 
 if __name__ == "__main__":
     main()
