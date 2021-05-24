@@ -16,9 +16,6 @@ def IntegrateWavelengthStep():
     t0, f0, a = symbols('t0, f0, a')
     step = LinearWavelengthStep(f0, a)
 
-    print("Linear discrete wave step: ")
-    pprint(step)
-    
     q = symbols('q')
     # p1 = symbolic_vector_2d('p1')
     # p2 = symbolic_vector_2d('p2')
@@ -30,13 +27,14 @@ def IntegrateWavelengthStep():
     bases = bezier_bases(1, q)
     p = make_bezier(points, bases)(q)
 
-    dpdt = diff(p, q)
-    tfdpdt = TimeFreqStep(dpdt[0], dpdt[1])
+    phase = 1 / p[1]
 
-    integratedStep = integrate(tfdpdt, (q, 0, 1))
+    dphase_dt = diff(phase, q)
 
-    print("Linear wave step integrated along 1st order bezier curve (should be equivalent): ")
-    pprint(integratedStep)
+    integratedPhase = integrate(dphase_dt, (q, 0, 1))
+    pprint(integratedPhase)
+
+    pprint(solve(integratedPhase))
 
 def cubic_point_fit_gradient_time_frequency():
     t = symbols('t')
