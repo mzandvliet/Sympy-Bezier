@@ -36,8 +36,13 @@ def IntegrateWavelengthStep():
 
     # Analytic integral of phase over a time-frequency quadratic bezier curve interval
     q1, q2 = symbols('q1, q2')
-    integratedPhase = integrate(dphase_dq, (q, 0, q2))
-    pprint(integratedPhase)
+    integratedPhaseIndef = integrate(dphase_dq, (q, 0, q2))
+    pprint(integratedPhaseIndef)
+
+    # Function for finding wave peaks along any quadratic curve in TF space
+    integratedPhase = integrate(dphase_dq, q)
+    phaseTarget = symbols("phaseTarget")
+    pprint(solve(integratedPhase - phaseTarget, q))
 
 
 def cubic_point_fit_gradient_time_frequency():
