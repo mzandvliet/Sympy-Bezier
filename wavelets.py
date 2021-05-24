@@ -3,6 +3,37 @@ from sympy import *
 from ramjet.math import *
 from ramjet.util import *
 
+
+def LinearWavelengthStep(f0, a):
+    df = f0 * (-1 + pow(2, sin(a)))
+    return Matrix([cos(a) / (f0 + df), df])
+
+def IntegrateWavelengthStep():
+    f0, a = symbols('f0, a')
+    step = LinearWavelengthStep(f0, a)
+    pprint(step)
+
+def cubic_point_fit_gradient_time_frequency():
+    t = symbols('t')
+
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+    p4 = symbolic_vector_2d('p4')
+    q = symbolic_vector_2d('q')
+    points = (p1, p2, p3, p4)
+    bases = bezier_bases(3, t)
+    p = make_bezier(points, bases)(t)
+
+    delta = q - p
+    error = delta.dot(delta)**2
+    grad_p2 = diff(error, p2)
+    grad_p3 = diff(error, p3)
+
+    common, exprs=cse((grad_p2, grad_p3), numbered_symbols('a'))
+    print(ccode(common))
+    print(ccode(exprs))
+
 def morlet_orthogonality():
     # pprint(integrate(sin(t) * sin(t+pi/2), (t, -1, 1)).evalf())
 
@@ -34,23 +65,6 @@ def sum_test():
 def morlet(f,x,n,t):
     s = n / (pi * 2 * f)
     return cos(pi * 2 * f * (x+t)) * exp(-(t**2) / (2 * s**2))
-
-def discrete_convolution_derivatives():
-    # Goal: find gradient of convolution s.t. we can maximize dot product bewteen signal and wavelet
-
-    x, t, wt = symbols('x t wt')
-    n = 6
-
-    f_a = 10
-    f_b = 9.9
-
-    w_a = morlet(f_a, 0, n, t)
-    w_b = morlet(f_b, 0, n, t)
-
-    convolution = Sum(w_a * w_b, (t, -16, +16))
-    pprint(convolution)
-    pprint(convolution.evalf())
-
 
 def freq_modulation_2():
     q = symbols('q')
@@ -112,13 +126,31 @@ def freq_modulation():
 
     pprint(solution)
 
+def discrete_convolution_derivatives():
+    # Goal: find gradient of convolution s.t. we can maximize dot product bewteen signal and wavelet
+
+    x, t, wt=symbols('x t wt')
+    n=6
+
+    f_a=10
+    f_b=9.9
+
+    w_a=morlet(f_a, 0, n, t)
+    w_b=morlet(f_b, 0, n, t)
+
+    convolution=Sum(w_a * w_b, (t, -16, +16))
+    pprint(convolution)
+    pprint(convolution.evalf())
+
 def main():
     init_printing(pretty_print=True, use_unicode=True, num_columns=180)
 
     # sum_test()
 
     # morlet_orthogonality()
-    discrete_convolution_derivatives()
+    # discrete_convolution_derivatives()
+    # cubic_point_fit_gradient_time_frequency()
+    IntegrateWavelengthStep()
 
 if __name__ == "__main__":
     main()
