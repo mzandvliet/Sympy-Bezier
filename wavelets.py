@@ -12,29 +12,33 @@ def TimeFreqStep(t, f):
     df = 1 * (-1 + pow(2, f))
     return Matrix([t, df])
 
+
 def IntegrateWavelengthStep():
     t0, f0, a = symbols('t0, f0, a')
     step = LinearWavelengthStep(f0, a)
 
     q = symbols('q')
-    # p1 = symbolic_vector_2d('p1')
-    # p2 = symbolic_vector_2d('p2')
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
     # p1 = Matrix([t0, f0])
     # p2 = p1 + step
-    p1 = Matrix([t0, f0])
-    p2 = Matrix([t0+1, f0+1])
-    points = (p1, p2)
-    bases = bezier_bases(1, q)
+    # p1 = Matrix([t0, f0])
+    # p2 = Matrix([t0+1, f0+1])
+    # p3 = Matrix([t0+2, f0+1])
+    points = (p1, p2, p3)
+    bases = bezier_bases(2, q)
     p = make_bezier(points, bases)(q)
 
     phase = 1 / p[1]
 
-    dphase_dt = diff(phase, q)
+    dphase_dq = diff(phase, q)
 
-    integratedPhase = integrate(dphase_dt, (q, 0, 1))
+    # Analytic integral of phase over a time-frequency quadratic bezier curve interval
+    q1, q2 = symbols('q1, q2')
+    integratedPhase = integrate(dphase_dq, (q, 0, q2))
     pprint(integratedPhase)
 
-    pprint(solve(integratedPhase))
 
 def cubic_point_fit_gradient_time_frequency():
     t = symbols('t')
