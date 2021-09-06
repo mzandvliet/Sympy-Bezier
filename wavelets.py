@@ -45,6 +45,27 @@ def IntegrateWavelengthStep():
     pprint(solve(integratedPhase - phaseTarget, q))
 
 
+def cubic_point_curvature_integral():
+    t, t1, t2 = symbols('t t1 t2')
+
+    p1 = symbolic_vector_2d('p1')
+    p2 = symbolic_vector_2d('p2')
+    p3 = symbolic_vector_2d('p3')
+    p4 = symbolic_vector_2d('p4')
+    points = (p1, p2, p3, p4)
+    bases = bezier_bases(3, t)
+    p = make_bezier(points, bases)(t)
+
+    d_p = diff(p, t, 1)
+    dd_p = diff(p, t, 2)
+
+    k = (d_p[0] * dd_p[1] - dd_p[0] * d_p[1]) / ((d_p[0]**2 + d_p[1]**2)**Rational(3,2))
+
+    common, exprs = cse((k), numbered_symbols('a'))
+    print_code(common, exprs)
+    # print(ccode(common))
+    # print(ccode(exprs))
+
 def cubic_point_fit_gradient_time_frequency():
     t = symbols('t')
 
@@ -177,12 +198,7 @@ def discrete_convolution_derivatives():
 def main():
     init_printing(pretty_print=True, use_unicode=True, num_columns=180)
 
-    # sum_test()
-
-    # morlet_orthogonality()
-    # discrete_convolution_derivatives()
-    # cubic_point_fit_gradient_time_frequency()
-    IntegrateWavelengthStep()
+    cubic_point_curvature_integral()
 
 if __name__ == "__main__":
     main()
